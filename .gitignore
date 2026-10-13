@@ -1,0 +1,51 @@
+# Python Virtual Environment
+ai_env/
+venv/
+env/
+.venv/
+
+# Build artifacts & C++ outputs
+build/
+out/
+bin/
+obj/
+*.exe
+*.dll
+*.so
+*.dylib
+*.pdb
+*.ilk
+*.lib
+*.a
+*.o
+*.obj
+
+# Model weights & large binaries (Exceeds GitHub limits or generated at runtime)
+*.bin
+*.pt
+*.pth
+*.onnx
+*.safetensors
+
+# IDE & Editor files
+.vs/
+.vscode/
+*.user
+*.suo
+CMakeSettings.json
+CMakeUserPresets.json
+
+# Python cache & build
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+
+# Intermediate runtime text dumps & logs
+*.log
+layout_in.txt
+layout_out.txt
+
+# PDF documents (sample, input, and output documents)
+*.pdf

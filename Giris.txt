@@ -1,0 +1,3 @@
+cd C:\Users\efe\Desktop\pdf_ai_engine
+.\ai_env\Scripts\activate
+python pdf_bridge.py
