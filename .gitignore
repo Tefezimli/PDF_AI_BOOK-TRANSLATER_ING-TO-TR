@@ -49,3 +49,7 @@ layout_out.txt
 
 # PDF documents (sample, input, and output documents)
 *.pdf
+
+# Generated translation outputs (Clean & Bilingual TXT dumps)
+cevirilmis_belge_*
+*_INCELEME.txt
