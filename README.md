@@ -1,188 +1,193 @@
 # PDF AI Book & Slide Translator (EN ➔ TR) 🚀
 
+<p align="center">
+  <a href="README.md"><b>🇬🇧 English Documentation</b></a> •
+  <a href="README_TR.md">🇹🇷 Türkçe Dokümantasyon</a>
+</p>
+
 [![Language: C++17](https://img.shields.io/badge/Language-C%2B%2B17-00599C.svg?style=flat&logo=c%2B%2B)](https://isocpp.org/)
 [![Language: Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB.svg?style=flat&logo=python)](https://www.python.org/)
-[![UI: Obsidian Cyber-GUI](https://img.shields.io/badge/GUI-Obsidian%20Workstation-38BDF8.svg?style=flat)](#-modern-grafik-arayüz-obsidian-cyber-workstation)
+[![UI: Obsidian Cyber-GUI](https://img.shields.io/badge/GUI-Obsidian%20Workstation-38BDF8.svg?style=flat)](#-obsidian-cyber-workstation-gui)
 [![Framework: PyTorch](https://img.shields.io/badge/PyTorch-CUDA%20%2F%20RTX%205080%20Ready-EE4C2C.svg?style=flat&logo=pytorch)](https://pytorch.org/)
 [![Acceleration: OpenMP](https://img.shields.io/badge/Acceleration-OpenMP%20Multi--threading-green.svg)](https://www.openmp.org/)
-[![Privacy: 100% Offline](https://img.shields.io/badge/Privacy-100%25%20Offline%20%26%20Air--Gapped-success.svg)](#-gizlilik-ve-güvenlik)
+[![Privacy: 100% Offline](https://img.shields.io/badge/Privacy-100%25%20Offline%20%26%20Air--Gapped-success.svg)](#-privacy--security)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-> **Akademik kitaplar, ders slaytları ve teknik makaleler için formülleri ve mizanpajı milimetrik koruyan, %100 yerel ve çevrimdışı hibrit (C++17 + Python) yapay zekâ çeviri iş istasyonu.**
+> **A high-performance, 100% offline and air-gapped hybrid (C++17 + Python) neural translation workstation engineered for academic textbooks, lecture slides, and technical research papers—preserving mathematical formulas, typography, and complex document layouts with millimeter precision.**
 
 ---
 
-## ⚡ Hızlı Başlangıç (Hiçbir Şey Bilmeyenler İçin Tek Tıkla Çalıştırma)
+<p align="center">
+  <img src="assets/app_preview.png" alt="PDF AI Engine Pro Workstation Preview" width="100%" />
+</p>
 
-Bu uygulamayı bilgisayarınızda çalıştırmak için karmaşık kodlar yazmanıza ya da teknik bilgiye ihtiyacınız yoktur. Sadece aşağıdaki adımları takip edin:
+---
+
+## ⚡ Quick Start (Zero Configuration & One-Click Setup)
+
+Designed for seamless out-of-the-box operation on Windows without complex manual setup:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────┐
-│  1. ADIM:  Kurulum_Yap.bat dosyasına çift tıklayın.                            │
-│            (Tüm yapay zekâ kütüphanelerini, CUDA desteğini ve çeviri modelini   │
-│            otomatik olarak kurar. İşlem bitene kadar bekleyin.)                 │
+│  STEP 1:  Double-click `Kurulum_Yap.bat`.                                      │
+│           (Automatically sets up Python virtual environment, installs PyTorch   │
+│           with RTX 5080 / CUDA 12.8 support, and downloads the offline model.)  │
 ├─────────────────────────────────────────────────────────────────────────────────┤
-│  2. ADIM:  Baslat.bat dosyasına çift tıklayın.                                 │
-│            (Şık ve modern masaüstü grafik arayüzü doğrudan ekranınıza açılır.)  │
+│  STEP 2:  Double-click `Baslat.bat`.                                           │
+│           (Launches the modern Obsidian Cyber-Workstation desktop GUI.)        │
 ├─────────────────────────────────────────────────────────────────────────────────┤
-│  3. ADIM:  "Seç..." butonuyla İngilizce PDF'inizi seçin ve                      │
-│            "🚀 ÇEVİRİYİ BAŞLAT" butonuna basın!                                │
+│  STEP 3:  Select your English PDF and click "🚀 ÇEVİRİYİ BAŞLAT"!              │
 └─────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-> 💡 **Not:** İlk kurulum tamamlandıktan sonra bilgisayarınızın **interneti tamamen kapalı olsa bile** uygulama kusursuzca çalışmaya devam eder!
+> 💡 **Note:** Once the initial setup is complete, the entire application operates **100% offline without requiring internet access**.
 
 ---
 
-## 💻 Geliştiriciler & Terminal Severler İçin (Manuel Başlatma)
+## 💻 Developer & Command Line Usage
 
-Uygulamayı komut satırı üzerinden yönetmek isterseniz:
+For developers who prefer command-line execution:
 
 ### Windows (PowerShell / CMD)
 ```powershell
-# 1. Sanal ortamı aktif edin
+# 1. Activate virtual environment
 .\ai_env\Scripts\activate
 
-# 2. Grafik Arayüzü başlatın:
+# 2. Launch Desktop GUI:
 python app_gui.py
 
-# VEYA doğrudan komut satırından çeviri motorunu çalıştırın:
+# OR run translation pipeline directly via CLI:
 python pdf_bridge.py
 ```
 
 ### Linux / macOS
 ```bash
-# 1. Sanal ortam oluşturup aktif edin
+# 1. Create and activate virtual environment
 python3 -m venv ai_env
 source ai_env/bin/activate
 
-# 2. Gereksinimleri yükleyin
+# 2. Install dependencies
 pip install -r requirements.txt
 
-# 3. Arayüzü başlatın
+# 3. Launch GUI
 python3 app_gui.py
 ```
 
 ---
 
-## 🖥️ Modern Grafik Arayüz (Obsidian Cyber-Workstation)
+## 🖥️ Obsidian Cyber-Workstation GUI
 
-`app_gui.py` ile sunulan masaüstü stüdyosu, çeviri sürecini baştan sona görselleştiren profesyonel araçlarla donatılmıştır:
+The native desktop workstation in [`app_gui.py`](app_gui.py) provides a comprehensive suite of visual tools:
 
-* 📁 **Akıllı Belge Seçici:** Kaynak PDF'i ve çıktı yolunu kolayca belirleyin; sayfa sayısı ve dosya detayları anında listelenir.
-* 👁️ **Canlı Çift Yönlü Sayfa Önizleme:** Çeviri esnasında veya sonrasında orijinal İngilizce sayfa ile çevrilmiş Türkçe sayfayı tek tıkla yan yana karşılaştırın.
-* 📊 **Canlı Donanım Telemetrisi:** Sisteminizdeki donanımı (NVIDIA RTX 5080 / Blackwell sm_120, CUDA çekirdekleri veya çok çekirdekli CPU) otomatik tanır ve durumunu gösterir.
-* 🛡️ **Hava Boşluğu (Air-Gapped) Göstergesi:** %100 çevrimdışı çalışma kilidini ve sıfır veri sızıntısı protokolünü doğrular.
-* 📝 **İki Dilli Karşılaştırma Sekmesi (Bilingual Review):** Orijinal paragraf ile Türkçe çeviriyi blok blok yan yana sunar; doğrudan seçip kopyalayabilirsiniz.
-* ⚡ **Canlı İlerleme Çubuğu ve Konsol Terminali:** OCR, formül maskeleme ve C++ mizanpaj adımlarını yüzdelik dilimlerle anlık olarak takip edin.
+* 📁 **Smart Document Picker:** Browse and inspect input PDF documents; automatically displays page count and metadata.
+* 👁️ **Dual-Mode Live Page Preview:** Instantly toggle and inspect original English pages against translated Turkish vector pages in real-time.
+* 📊 **Live Hardware Telemetry:** Automatically discovers and displays active hardware acceleration (NVIDIA RTX 5080 sm_120 Blackwell, CUDA cores, or multi-threaded CPU fallback).
+* 🛡️ **Air-Gapped Protocol Monitor:** Verifies 100% offline isolation and ensures zero data leakage.
+* 📝 **Bilingual Review Inspector:** Side-by-side inspection table presenting original English sentences alongside translated Turkish paragraphs with one-click copying.
+* ⚡ **Live Progress & Console Logs:** Real-time percentage progress bar and terminal logs detailing OCR, mathematical masking, and C++ layout fitting.
 
 ---
 
-## 🛡️ Neden Bu Proje? (Geleneksel Çeviriler vs. PDF AI Engine)
+## 🛡️ Why PDF AI Engine? (Traditional Translators vs. PDF AI Engine)
 
-Standart çeviri yazılımları akademik ve teknik dokümanlarda genellikle yetersiz kalır. Aşağıdaki tablo projenin getirdiği farkları özetlemektedir:
+<p align="center">
+  <img src="assets/comparison_demo.png" alt="PDF AI Engine Before and After Comparison" width="100%" />
+</p>
 
-| Özellik / Kriter | Standart Çeviri Araçları (Google Translate / DeepL) | 🚀 PDF AI Engine Pro (v10.0) |
+Standard translation tools inevitably break formulas and corrupt document geometry in academic contexts:
+
+| Comparison Criteria | Standard Translators (Google / DeepL) | 🚀 PDF AI Engine Pro (v10.0) |
 | :--- | :--- | :--- |
-| **Matematik ve Denklemler** | Formülleri metne çevirip bozar ($x^2 \to x2$, $r^{n-1} \to rn-1$) | 🛡️ **Unicode Üst/Alt İndis ve MTH Token Kalkanı** ile formülleri %100 korur |
-| **Sayfa Mizanpajı & Tipografi** | Metin kutularını, tabloları ve grafik altı yazılarını kaydırır | ⚡ **C++17 OpenMP ve Dinamik Font Sığdırma** ile milimetrik yerleşim sağlar |
-| **Zemin Rengi & Kontrast** | Koyu slaytlarda beyaz kutu yapıştırıp görseli çirkinleştirir | 🎨 **Dış Halka Renk Örnekleme:** Koyu zemine beyaz, açık zemine koyu yazı yerleştirir |
-| **Akademik Terminoloji** | Genel/sözlük çevirisi yapar (*Radix* $\to$ *Kök*) | 📚 **Bütünleşik Terim Sözlüğü:** *Radix Complement* $\to$ *Taban Tümleyeni* |
-| **Gizlilik & Güvenlik** | Dokümanlarınızı harici bulut sunucularına yükler | 🔒 **%100 Çevrimdışı (Air-Gapped):** Hiçbir veri bilgisayarınızın dışına çıkmaz |
-| **Donanım Optimizasyonu** | Donanım hızlandırması sınırlıdır | 🚀 **RTX 5080 (CUDA 12.8 / sm_120) Tensör Çekirdeği** + Çok çekirdekli CPU Fallback |
-| **Çıktı Çeşitliliği** | Sadece tek bir PDF çıktısı verir | 📑 **3'ü 1 Arada Çıktı:** Seçilebilir PDF + Temiz TXT + İki Dilli Karşılaştırmalı TXT |
+| **Mathematics & Formulas** | Corrupts equations into plain text ($x^2 \to x2$, $r^{n-1} \to rn-1$) | 🛡️ **Unicode Super/Subscripts & MTH-Token Shield** preserve formulas 100% |
+| **Document Layout & Typography** | Drifts text boxes, misaligns tables and diagram callouts | ⚡ **C++17 OpenMP & Dynamic Font Auto-Fit** ensure millimeter-precise alignment |
+| **Background Color & Contrast** | Pastes white text boxes over dark slides, ruining aesthetics | 🎨 **Outer-Ring Color Sampling:** White text on dark themes, dark text on light themes |
+| **Academic Terminology** | Literal/generic translations (*Radix* $\to$ *Root*) | 📚 **Domain Glossary:** *Radix Complement* $\to$ *Taban Tümleyeni* |
+| **Privacy & Security** | Uploads documents to third-party cloud servers | 🔒 **100% Offline (Air-Gapped):** No data ever leaves your local machine |
+| **Hardware Optimization** | Limited hardware acceleration | 🚀 **RTX 5080 (CUDA 12.8 / sm_120) Tensor Cores** + Multi-threaded CPU Fallback |
+| **Output Flexibility** | Produces only a single PDF output | 📑 **Tri-Output System:** Selectable PDF + Clean TXT + Bilingual Review TXT |
 
 ---
 
-## 🏛️ Mimari ve İş Akışı (Architecture Workflow)
+## 🏛️ System Architecture & Workflow
 
 ```mermaid
 flowchart TD
-    A[Girdi Belgesi: PDF] --> B{Belge Analizi ve Format Tespiti}
+    A[Input Document: PDF] --> B{Document Layout Analysis}
     
-    B -->|Vektorel ve Dijital Metin| C[1. Tipografi ve Metin Ayristirma<br/>PyMuPDF: Font, Punto, Bounding Box]
-    B -->|Taranmis Gorsel veya Resim| D[1. Adaptif OCR Katmani<br/>OpenCV ve Cift Gecisli Tesseract]
+    B -->|Digital Vector Text| C[1. Typography & Text Extraction<br/>PyMuPDF: Font, Size, Bounding Box]
+    B -->|Scanned / Raster Image| D[1. Adaptive OCR Layer<br/>OpenCV & Dual-Pass Tesseract]
     
-    C --> E[2. Matematik ve Indis Rekonstruksiyonu<br/>Alt ve Ust Simgelerin Tespiti]
+    C --> E[2. Math & Sub/Superscript Reconstruction<br/>Unicode Mapping & Baseline Detection]
     D --> E
     
-    E --> F[3. Formul ve Denklem Maskeleme<br/>MTH Token Guvenlik Kalkani]
-    F --> G[4. Akademik Terminoloji Sozlugu<br/>Sayisal Mantik ve Donanim Terimleri]
-    G --> H[5. Noral Ceviri Motoru<br/>Helsinki-NLP MarianMT Cevrimdisi]
-    H --> I[6. Formulleri Cozme ve Post-Edit<br/>Denklemlerin Birebir Geri Yuklenmesi]
+    E --> F[3. Formula & Equation Shielding<br/>MTH Security Token Shield]
+    F --> G[4. Engineering Terminology Dictionary<br/>Digital Logic & Computer Architecture]
+    G --> H[5. Neural Machine Translation<br/>Helsinki-NLP MarianMT Offline]
+    H --> I[6. Formula Restoration & Post-Editing<br/>Exact Equation Re-injection]
     
-    I --> J[7. C++17 AiEngine ve Python Auto-Fit<br/>OpenMP Paralel Bbox ve Punto Olcekleme]
-    J --> K[8. Cerrahi Vektorel Render<br/>Zemin Rengi Eslestirme ve Kontrast Garantisi]
+    I --> J[7. C++17 AiEngine & Python Auto-Fit<br/>OpenMP Parallel Bbox & Font Scaling]
+    J --> K[8. Surgical Vector Rendering<br/>Background Matching & Contrast Guarantee]
     
-    K --> L[Cikti 1: Secilebilir Turkce PDF]
-    K --> M[Cikti 2: Temiz Turkce TXT Metin]
-    K --> N[Cikti 3: Iki Dilli Karsilastirmali TXT]
+    K --> L[Output 1: Selectable Turkish PDF]
+    K --> M[Output 2: Clean Turkish TXT Transcript]
+    K --> N[Output 3: Bilingual Comparison TXT]
 ```
 
-### 🔄 8 Aşamalı Uçtan Uca İşlem Hattı Detayı:
+### 🔄 8-Stage End-to-End Processing Pipeline:
 
-1. **📄 Belge Tipi Tespiti ve Düzen Analizi (DLA):**  
-   Belgenin dijital vektörel metin mi yoksa taranmış fotoğraf/slayt mı olduğu sayfa bazında tespit edilir. Dijital metinler doğrudan PyMuPDF ile çıkarılırken; taranmış sayfalar OpenCV ve çift geçişli Tesseract OCR ile taranır.
-2. **📐 Matematik ve İndis Rekonstrüksiyonu:**  
-   Metin içindeki üst simgeler ($x^2, r^{n-1}$) ve alt simgeler ($a_0, N_1$) tespit edilerek Unicode seviyesinde korunur.
-3. **🛡️ Formül ve Denklem Maskeleme (MTH Kalkanı):**  
-   Denklemler ve saf matematik blokları çeviriye girmeden önce özel `MTH0X`, `MTH1X` jetonlarıyla maskelenir; modelin matematiksel sembolleri bozması %100 engellenir.
-4. **📚 Akademik ve Mühendislik Terim Sözlüğü:**  
-   Sayısal tasarım, mantık devreleri ve bilgisayar mimarisi terimleri (*Radix Complement* $\to$ *Taban Tümleyeni*, *Discard end carry* $\to$ *Son eldeyi atın*) çeviri öncesinde kural tabanlı sözlükle standartlaştırılır.
-5. **🧠 Nöral Çeviri Modeli:**  
-   Helsinki-NLP MarianMT modeli tamamen çevrimdışı (offline) olarak yerel bellekten çalıştırılır ve cümle bazlı çeviri yapılır.
-6. **🔓 Formül Geri Yükleme ve Doğrulama:**  
-   Maskelenen tüm denklemler, orijinal matematiksel yapıları ve indisleri korunarak Türkçe çevirinin ilgili konumlarına geri yerleştirilir.
-7. **⚡ C++17 AiEngine & Python Dinamik Font Adaptasyonu:**  
-   Türkçenin İngilizceye kıyasla uzama katsayısı hesaplanır. C++17 OpenMP paralel motoru veya Python dinamik sığdırma algoritması ile font puntonu satır satır optimize edilerek sınırlayıcı kutulara (bbox) milimetrik sığdırılır.
-8. **🎨 Cerrahi Vektörel Render ve Kontrast Garantisi:**  
-   Orijinal sayfanın dış halka arka plan rengi piksellerden örneklenir. Eski İngilizce yazı silinir; arka plan koyuysa beyaz, açıksa koyu renkli metin katmanı basılarak fareyle seçilebilir, aranabilir ve kopyalanabilir Türkçe PDF üretilir.
+1. **📄 Document Layout Analysis (DLA):** Classifies pages as digital vector text or raster scanned slides. Digital text is extracted directly via PyMuPDF; scanned slides are processed through OpenCV adaptive thresholding and dual-pass Tesseract OCR.
+2. **📐 Math & Index Reconstruction:** Preserves superscripts ($x^2, r^{n-1}$) and subscripts ($a_0, N_1$) at the Unicode character level.
+3. **🛡️ Formula Shielding (MTH Shield):** Encapsulates standalone and inline formulas using unique `MTH0X`, `MTH1X` tokens to prevent neural model corruption.
+4. **📚 Academic & Engineering Glossary:** Applies deterministic rule-based corrections for computer architecture and digital logic terms (*Radix Complement* $\to$ *Taban Tümleyeni*, *Discard end carry* $\to$ *Son eldeyi atın*).
+5. **🧠 Neural Machine Translation:** Runs local MarianMT inference on GPU/CPU with mini-batching and repeat penalty optimizations.
+6. **🔓 Formula Restoration:** Restores shielded tokens back into translated Turkish sentences with zero mathematical loss.
+7. **⚡ C++17 AiEngine & Dynamic Font Auto-Fit:** Calculates language expansion ratios and iteratively optimizes font size to fit bounding boxes using OpenMP parallel threads.
+8. **🎨 Surgical Vector Rendering:** Samples outer-ring background colors and renders sharp vector glyphs with strict contrast guarantees (white on dark backgrounds, dark on light backgrounds).
 
 ---
 
-## 📑 Üretilen 3'ü 1 Arada Çıktılar (Tri-Output System)
+## 📑 Tri-Output Production System
 
-Bir belge işlendiğinde sistem eşzamanlı olarak 3 farklı formatta çıktı üretir:
+Every processed document concurrently produces three complementary formats:
 
-1. **Kusursuz Türkçe PDF (`*_ULTIMATE.pdf`):**  
-   Orijinal belgenin birebir görsel ikizidir. Eski İngilizce yazılar milimetrik olarak silinip yerine aynı renk ve hizalamada Türkçe çevirileri yerleştirilir. Metinler fareyle seçilebilir, aranabilir ve kopyalanabilir.
-2. **Temiz Türkçe Transkript (`*_ULTIMATE.txt`):**  
-   Kitap veya slaytların sayfa sayfa bölünmüş, tüm metin ve formüllerini içeren yalın Türkçe metin dökümü.
-3. **Karşılaştırmalı İnceleme Dosyası (`*_INCELEME.txt`):**  
-   Her bir paragrafın İngilizce orijinali ile Türkçe çevirisini yan yana gösteren akademik denetim ve çalışma kılavuzu.
+1. **Searchable & Selectable Turkish PDF (`*_ULTIMATE.pdf`):** A visual twin of the original document with surgical in-place replacement and selectable vector text.
+2. **Clean Turkish Transcript (`*_ULTIMATE.txt`):** A clean page-by-page transcript containing pure Turkish text and reconstructed mathematical formulas.
+3. **Bilingual Review File (`*_INCELEME.txt`):** A side-by-side comparative inspection document displaying original English blocks against Turkish translations.
 
 ---
 
-## 📁 Proje Dizin Yapısı
+## 📁 Repository Directory Structure
 
 ```
 pdf_ai_engine/
-├── include/                 # C++ Başlık Dosyaları
-│   ├── pdf_layout.h         # Belge düzeni ve sınırlayıcı kutu (BoundingBox) yapıları
-│   ├── tensor.h             # Özel C++ Tensör ve matris optimizasyonları
-│   └── tokenizer.h          # Yüksek hızlı kelime ayrıştırma arayüzü
-├── src/                     # C++ Kaynak Kodları
-│   ├── main.cpp             # OpenMP çok çekirdekli font adaptasyon motoru
-│   ├── pdf_layout.cpp       # Düzen ve font hesaplama uygulamaları
-│   ├── tensor.cpp           # Tensör çarpım mantığı
-│   └── tokenizer.cpp        # C++ tokenizer uygulaması
-├── app_gui.py               # Obsidian Cyber-Workstation masaüstü grafik arayüzü
-├── pdf_bridge.py            # Ana yapay zekâ, OCR, mizanpaj ve render iş motoru
-├── export_model.py          # MarianMT model ağırlıklarını Float32 ikili (.bin) formata dönüştürücü
-├── Kurulum_Yap.bat          # Windows için tek tıkla otomatik kurulum sihirbazı
-├── Baslat.bat               # Windows için tek tıkla grafik arayüz başlatıcı
-├── CMakeLists.txt           # C++ projesi derleme konfigürasyonu
-├── requirements.txt         # Gerekli Python kütüphaneleri
-├── Giris.txt                # Hızlı komut referansı
-├── LICENSE                  # MIT Lisansı
-└── README.md                # Kapsamlı proje dokümantasyonu
+├── assets/                  # Showcase and comparison visual assets
+│   ├── app_preview.png      # Obsidian Cyber Workstation GUI preview
+│   └── comparison_demo.png  # Before / After academic translation comparison
+├── include/                 # C++ Header Files
+│   ├── pdf_layout.h         # Document layout and BoundingBox structures
+│   ├── tensor.h             # Custom C++ tensor and matrix optimizations
+│   └── tokenizer.h          # High-speed word tokenization interface
+├── src/                     # C++ Source Files
+│   ├── main.cpp             # OpenMP multi-threaded font adaptation engine
+│   ├── pdf_layout.cpp       # Layout calculation routines
+│   ├── tensor.cpp           # Tensor multiplication logic
+│   └── tokenizer.cpp        # C++ tokenizer implementation
+├── app_gui.py               # Obsidian Cyber-Workstation desktop GUI
+├── pdf_bridge.py            # Core AI, OCR, layout, and rendering engine
+├── export_model.py          # MarianMT model exporter to Float32 binary (.bin)
+├── Kurulum_Yap.bat          # 1-Click Windows automated setup wizard
+├── Baslat.bat               # 1-Click Windows GUI launcher
+├── CMakeLists.txt           # C++ CMake build configuration
+├── requirements.txt         # Python package dependencies
+├── Giris.txt                # Quick reference cheat-sheet
+├── LICENSE                  # MIT License
+├── README.md                # Primary English documentation
+└── README_TR.md             # Turkish documentation
 ```
 
 ---
 
-## ⚙️ C++ AiEngine Motorunu Derleme (İsteğe Bağlı)
-
-Sistemde CMake ve C++17 derleyicisi (MSVC / GCC / Clang) yüklüyse, çok çekirdekli C++ OpenMP motorunu derleyerek ekstra hız kazanabilirsiniz:
+## ⚙️ Building C++ AiEngine (Optional / Performance Boost)
 
 ```bash
 mkdir build
@@ -192,42 +197,41 @@ cmake --build . --config Release
 cd ..
 ```
 
-> ℹ️ **Not:** Bilgisayarınızda C++ derleyicisi veya CMake olmasa bile sistem durmaz; `pdf_bridge.py` içindeki dahili Python dinamik font adaptasyon motoru otomatik devreye girer.
+> ℹ️ **Note:** CMake and C++ compiler are optional. If not installed, `pdf_bridge.py` seamlessly falls back to its built-in Python dynamic font auto-fit algorithm.
 
 ---
 
-## ❓ Sıkça Sorulan Sorular (SSS)
+## ❓ Frequently Asked Questions (FAQ)
 
 <details>
-<summary><b>1. İnternetim yokken bu program çalışır mı?</b></summary>
-Evet! <code>Kurulum_Yap.bat</code> çalıştırıldığında gerekli çeviri modeli yerel diskinize kaydedilir. Sonrasında bilgisayarınızın ağ bağlantısını tamamen kesseniz bile program %100 çevrimdışı çalışır.
+<summary><b>1. Does this work completely offline without internet?</b></summary>
+Yes! Once <code>Kurulum_Yap.bat</code> downloads the translation model during initial setup, the application operates 100% offline with zero external network dependencies.
 </details>
 
 <details>
-<summary><b>2. NVIDIA ekran kartım yok, programı çalıştırabilir miyim?</b></summary>
-Kesinlikle evet. Program donanımınızı otomatik algılar. NVIDIA GPU bulamazsa kilitlenmez; çok çekirdekli işlemcinizi (CPU Multi-threading) devreye sokarak işlemi başarıyla tamamlar.
+<summary><b>2. Can I run this without an NVIDIA graphics card?</b></summary>
+Yes. The engine automatically detects available hardware. If no CUDA GPU is detected, it smoothly transitions to multi-threaded CPU processing.
 </details>
 
 <details>
-<summary><b>3. Taranmış (fotoğraf formatında) slaytlarda çalışır mı?</b></summary>
-Evet. Çift geçişli Tesseract OCR ve adaptif görüntü filtreleme katmanı sayesinde hem beyaz zeminli hem de koyu temalı fotoğraflı slaytları yüksek doğrulukla okuyup çevirir.
+<summary><b>3. Does it handle scanned slides and dark-themed presentations?</b></summary>
+Yes. Dual-pass adaptive OCR with outer-ring color sampling reliably extracts and renders text across both bright white slides and inverted dark themes.
 </details>
 
 <details>
-<summary><b>4. Kitaplardaki matematik formülleri bozulur mu?</b></summary>
-Hayır. Gelişmiş MTH Token Kalkanı, matematik denklemlerini ve üst/alt indisleri çeviri öncesinde kilitler ve çeviri sonrasında orijinal yapısında geri yükler.
+<summary><b>4. Will mathematical formulas and superscripts be corrupted?</b></summary>
+No. The MTH Token Shield locks all equations prior to translation and restores them in their original mathematical structure afterward.
 </details>
 
 ---
 
-## 🔒 Gizlilik ve Güvenlik
+## 🔒 Privacy & Security
 
-* Bu yazılım **tamamen yerel ve kapalı devre (Air-Gapped)** çalışır.
-* Hugging Face telemetri ve token izleyicileri kod seviyesinde engellenmiştir.
-* Belgeleriniz, kitaplarınız veya kişisel verileriniz hiçbir koşulda harici bir sunucuya ya da bulut hizmetine aktarılmaz.
+* **100% Air-Gapped & Local:** No documents, text, or telemetry are ever transmitted to external cloud servers.
+* **Hugging Face Telemetry Disabled:** Explicitly disabled in code (`HF_HUB_OFFLINE=1`, `HF_HUB_DISABLE_TELEMETRY=1`).
 
 ---
 
-## 📄 Lisans
+## 📄 License
 
-Bu proje [MIT Lisansı](LICENSE) kapsamında açık kaynak olarak lisanslanmıştır. Dilediğiniz gibi kullanabilir, geliştirebilir ve özelleştirebilirsiniz.
+This project is open-source under the [MIT License](LICENSE). You are free to use, modify, and distribute it.
