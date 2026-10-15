@@ -29,6 +29,10 @@ Uygulama, sıfır yapılandırma ile (out-of-the-box) çalışacak şekilde tasa
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────┐
+│  0. ADIM:  Projeyi İndirin:                                                     │
+│            GitHub sayfasındaki yeşil `<> Code` butonuna basıp `Download ZIP`    │
+│            deyin ve klasöre çıkartın (veya `git clone` yapın).                  │
+├─────────────────────────────────────────────────────────────────────────────────┤
 │  1. ADIM:  Kurulum_Yap.bat dosyasına çift tıklayın.                            │
 │            (Python sanal ortamı, PyTorch/CUDA kütüphaneleri ve çeviri modeli    │
 │            otomatik olarak indirilir ve yerel diskinize kilitlenir.)            │

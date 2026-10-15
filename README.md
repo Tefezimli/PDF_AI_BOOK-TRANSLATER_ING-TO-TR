@@ -29,6 +29,10 @@ Designed for seamless out-of-the-box operation on Windows without complex manual
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────┐
+│  STEP 0:  Download the Project:                                                 │
+│           Click the green `<> Code` button on GitHub, select `Download ZIP`,    │
+│           and extract the archive (or run `git clone <repo-url>`).              │
+├─────────────────────────────────────────────────────────────────────────────────┤
 │  STEP 1:  Double-click `Kurulum_Yap.bat`.                                      │
 │           (Automatically sets up Python virtual environment, installs PyTorch   │
 │           with RTX 5080 / CUDA 12.8 support, and downloads the offline model.)  │
