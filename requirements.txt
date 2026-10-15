@@ -1,6 +1,6 @@
 torch>=2.0.0
 torchvision
-transformers>=4.40.0
+transformers>=5.19.0
 sentencepiece
 pymupdf>=1.24.0
 pillow>=10.0.0
