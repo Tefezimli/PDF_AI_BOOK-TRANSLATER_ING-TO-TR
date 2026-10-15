@@ -1,3 +1,19 @@
-cd C:\Users\efe\Desktop\pdf_ai_engine
-.\ai_env\Scripts\activate
-python pdf_bridge.py
+====================================================================
+           PDF AI BOOK TRANSLATOR - HIZLI BASLANGIC REHBERI
+====================================================================
+
+1. EN KOLAY YONTEM (Windows):
+   - Ilk kez calistiriyorsaniz: "Kurulum_Yap.bat" dosyasina cift tiklayin.
+   - Kurulum tamamlandiktan sonra: "Baslat.bat" dosyasina cift tiklayin.
+   - Karsiniza modern grafik arayuz (GUI) acilacaktir!
+
+2. KOMUT SATIRINDAN MANUEL CALISTIRMA (Windows):
+   .\ai_env\Scripts\activate
+   python app_gui.py
+
+3. KOMUT SATIRINDAN MANUEL CALISTIRMA (Linux / macOS):
+   source ai_env/bin/activate
+   python app_gui.py
+
+4. ARACISIZ DIREKT CEVIRI (Grafik Arayuzsuz):
+   python pdf_bridge.py

@@ -3,7 +3,7 @@ from transformers import MarianMTModel, MarianTokenizer
 import numpy as np
 import os
 
-model_name = "Helsinki-NLP/opus-mt-en-de"
+model_name = "Helsinki-NLP/opus-mt-tc-big-en-tr"
 print(f"=== {model_name} Modeli Indiriliyor ===")
 
 # 1. Tokenizer ve Modeli HuggingFace'den çek

@@ -53,3 +53,11 @@ layout_out.txt
 # Generated translation outputs (Clean & Bilingual TXT dumps)
 cevirilmis_belge_*
 *_INCELEME.txt
+*_ULTIMATE.txt
+
+# OS & Editor artifacts
+.DS_Store
+Thumbs.db
+.idea/
+*.tmp
+*.bak
