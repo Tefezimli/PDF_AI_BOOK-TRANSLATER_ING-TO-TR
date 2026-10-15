@@ -98,27 +98,45 @@ Standart çeviri yazılımları akademik ve teknik dokümanlarda genellikle yete
 
 ```mermaid
 flowchart TD
-    A["Girdi Belgesi (Input PDF)"] --> B{"Belge Tipi Tespiti"}
+    A[Girdi Belgesi: PDF] --> B{Belge Analizi ve Format Tespiti}
     
-    B -->|"Vektörel / Dijital Metin"| C["Dijital Metin & Tipografi Çıkarımı<br/>(PyMuPDF - Boyut, Font, Baseline)"]
-    B -->|"Fotoğraf / Taranmış Slayt"| D["Görüntü İşleme & Adaptif OCR Katmanı<br/>(OpenCV + Tesseract / Çift Geçişli)"]
+    B -->|Vektorel ve Dijital Metin| C[1. Tipografi ve Metin Ayristirma<br/>PyMuPDF: Font, Punto, Bounding Box]
+    B -->|Taranmis Gorsel veya Resim| D[1. Adaptif OCR Katmani<br/>OpenCV ve Cift Gecisli Tesseract]
     
-    C --> E["Unicode Matematik & İndis Rekonstrüksiyonu<br/>(x⁰¹²³⁴⁵, rⁿ⁻¹, a₀₁₂)"]
+    C --> E[2. Matematik ve Indis Rekonstruksiyonu<br/>Alt ve Ust Simgelerin Tespiti]
     D --> E
     
-    E --> F["Matematik & Formül Maskeleme Motoru<br/>(MTH*X Kalkanı)"]
-    F --> G["Akademik & Mühendislik Terim Sözlüğü<br/>(Sayısal Mantık, Bilgisayar Mimarisi)"]
-    G --> H["Nöral Çeviri Modeli<br/>(Helsinki-NLP MarianMT Çevrimdışı)"]
-    H --> I["Formül Geri Yükleme & Akademik Post-Edit"]
+    E --> F[3. Formul ve Denklem Maskeleme<br/>MTH Token Guvenlik Kalkani]
+    F --> G[4. Akademik Terminoloji Sozlugu<br/>Sayisal Mantik ve Donanim Terimleri]
+    G --> H[5. Noral Ceviri Motoru<br/>Helsinki-NLP MarianMT Cevrimdisi]
+    H --> I[6. Formulleri Cozme ve Post-Edit<br/>Denklemlerin Birebir Geri Yuklenmesi]
     
-    I --> J["C++17 AiEngine (OpenMP) / Python Auto-Fit<br/>Paralel Bounding-Box & Punto Optimizasyonu"]
+    I --> J[7. C++17 AiEngine ve Python Auto-Fit<br/>OpenMP Paralel Bbox ve Punto Olcekleme]
+    J --> K[8. Cerrahi Vektorel Render<br/>Zemin Rengi Eslestirme ve Kontrast Garantisi]
     
-    J --> K["Cerrahi Vektörel Render & Kontrast Eşleme<br/>(Zemin Rengi Tespiti + Keskin Glif Basımı)"]
-    
-    K --> L["1. Seçilebilir & Kopyalanabilir Türkçe PDF"]
-    K --> M["2. Temiz Türkçe TXT Transkripti"]
-    K --> N["3. Karşılaştırmalı İki Dilli (EN/TR) İnceleme Dosyası"]
+    K --> L[Cikti 1: Secilebilir Turkce PDF]
+    K --> M[Cikti 2: Temiz Turkce TXT Metin]
+    K --> N[Cikti 3: Iki Dilli Karsilastirmali TXT]
 ```
+
+### 🔄 8 Aşamalı Uçtan Uca İşlem Hattı Detayı:
+
+1. **📄 Belge Tipi Tespiti ve Düzen Analizi (DLA):**  
+   Belgenin dijital vektörel metin mi yoksa taranmış fotoğraf/slayt mı olduğu sayfa bazında tespit edilir. Dijital metinler doğrudan PyMuPDF ile çıkarılırken; taranmış sayfalar OpenCV ve çift geçişli Tesseract OCR ile taranır.
+2. **📐 Matematik ve İndis Rekonstrüksiyonu:**  
+   Metin içindeki üst simgeler ($x^2, r^{n-1}$) ve alt simgeler ($a_0, N_1$) tespit edilerek Unicode seviyesinde korunur.
+3. **🛡️ Formül ve Denklem Maskeleme (MTH Kalkanı):**  
+   Denklemler ve saf matematik blokları çeviriye girmeden önce özel `MTH0X`, `MTH1X` jetonlarıyla maskelenir; modelin matematiksel sembolleri bozması %100 engellenir.
+4. **📚 Akademik ve Mühendislik Terim Sözlüğü:**  
+   Sayısal tasarım, mantık devreleri ve bilgisayar mimarisi terimleri (*Radix Complement* $\to$ *Taban Tümleyeni*, *Discard end carry* $\to$ *Son eldeyi atın*) çeviri öncesinde kural tabanlı sözlükle standartlaştırılır.
+5. **🧠 Nöral Çeviri Modeli:**  
+   Helsinki-NLP MarianMT modeli tamamen çevrimdışı (offline) olarak yerel bellekten çalıştırılır ve cümle bazlı çeviri yapılır.
+6. **🔓 Formül Geri Yükleme ve Doğrulama:**  
+   Maskelenen tüm denklemler, orijinal matematiksel yapıları ve indisleri korunarak Türkçe çevirinin ilgili konumlarına geri yerleştirilir.
+7. **⚡ C++17 AiEngine & Python Dinamik Font Adaptasyonu:**  
+   Türkçenin İngilizceye kıyasla uzama katsayısı hesaplanır. C++17 OpenMP paralel motoru veya Python dinamik sığdırma algoritması ile font puntonu satır satır optimize edilerek sınırlayıcı kutulara (bbox) milimetrik sığdırılır.
+8. **🎨 Cerrahi Vektörel Render ve Kontrast Garantisi:**  
+   Orijinal sayfanın dış halka arka plan rengi piksellerden örneklenir. Eski İngilizce yazı silinir; arka plan koyuysa beyaz, açıksa koyu renkli metin katmanı basılarak fareyle seçilebilir, aranabilir ve kopyalanabilir Türkçe PDF üretilir.
 
 ---
 
