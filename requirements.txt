@@ -3,7 +3,7 @@ torchvision
 transformers>=4.40.0
 sentencepiece
 pymupdf>=1.24.0
-pillow>=10.0.0
+pillow>=12.3.0
 opencv-python>=4.8.0
 pytesseract>=0.3.10
 numpy>=1.24.0
