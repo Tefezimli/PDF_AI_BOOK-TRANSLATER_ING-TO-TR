@@ -6,7 +6,8 @@ We actively provide security updates and patches for the following versions:
 
 | Version | Supported          | Security Status |
 | ------- | ------------------ | --------------- |
-| 10.x    | :white_check_mark: | Active Support  |
+| 14.x    | :white_check_mark: | Active Support  |
+| 10.x    | :white_check_mark: | Maintenance     |
 | < 10.0  | :x:                | Deprecated      |
 
 ---

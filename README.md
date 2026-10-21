@@ -100,7 +100,7 @@ The native desktop workstation in [`app_gui.py`](app_gui.py) provides a comprehe
 
 Standard translation tools inevitably break formulas and corrupt document geometry in academic contexts:
 
-| Comparison Criteria | Standard Translators (Google / DeepL) | 🚀 PDF AI Engine Pro (v10.0) |
+| Comparison Criteria | Standard Translators (Google / DeepL) | 🚀 PDF AI Engine Pro (v14.0) |
 | :--- | :--- | :--- |
 | **Mathematics & Formulas** | Corrupts equations into plain text ($x^2 \to x2$, $r^{n-1} \to rn-1$) | 🛡️ **Unicode Super/Subscripts & MTH-Token Shield** preserve formulas 100% |
 | **Document Layout & Typography** | Drifts text boxes, misaligns tables and diagram callouts | ⚡ **C++17 OpenMP & Dynamic Font Auto-Fit** ensure millimeter-precise alignment |

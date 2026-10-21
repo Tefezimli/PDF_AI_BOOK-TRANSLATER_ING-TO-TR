@@ -148,7 +148,7 @@ class EnterpriseTranslatorStudio:
 
         tk.Label(
             brand_frame,
-            text="HYBRID C++17 OpenMP & NEURAL DLA WORKSTATION  •  v10.0 MASTER",
+            text="HYBRID C++17 OpenMP & NEURAL DLA WORKSTATION  •  v14.0 MASTER",
             font=("Consolas", 8, "bold"),
             fg=ACCENT_BLUE,
             bg=BG_PANEL
