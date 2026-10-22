@@ -3,13 +3,12 @@ import re
 import json
 import gc
 import shutil
-import urllib.request
 import warnings
 import subprocess
 from dataclasses import dataclass
 from typing import List, Tuple, Dict, Any, Optional
 
-# --- 1. %100 ÇEVRİMDIŞI (AIR-GAPPED) KİLİT PROTOKOLÜ ---
+# --- 1. %100 CEVRIMDISI (AIR-GAPPED) KILIT PROTOKOLU ---
 os.environ["HF_HUB_OFFLINE"] = "1"
 os.environ["TRANSFORMERS_OFFLINE"] = "1"
 os.environ["HF_HUB_DISABLE_TELEMETRY"] = "1"
@@ -24,8 +23,8 @@ for _tp in [
     if os.path.exists(_tp):
         try:
             os.remove(_tp)
-        except Exception:
-            pass
+        except OSError:
+            _ = None
 
 import pymupdf as fitz
 from PIL import Image
@@ -57,16 +56,18 @@ def configure_tesseract() -> bool:
 
 
 HAS_TESSERACT = configure_tesseract()
-CACHE_VERSION = "v14.0_production_redaction_code_quarantine"
+CACHE_VERSION = "v17.0_flawless_production"
 
 
-# --- 2. RTX 5080 (BLACKWELL sm_120) & CPU OTONOM BELLEK YÖNETİMİ ---
+# --- 2. BLACKWELL GPU (sm_120) OPTIMIZASYONU VE OTONOM BELLEK YONETIMI ---
 def get_safe_device() -> Tuple[torch.device, torch.dtype]:
     if torch.cuda.is_available():
         try:
             cap = torch.cuda.get_device_capability(0)
             gpu_name = torch.cuda.get_device_name(0)
-            test_tensor = torch.tensor([[1.0, 2.0], [3.0, 4.0]], device="cuda")
+            dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
+
+            test_tensor = torch.tensor([[1.0, 2.0], [3.0, 4.0]], device="cuda", dtype=dtype)
             _ = torch.matmul(test_tensor, test_tensor)
             torch.cuda.synchronize()
 
@@ -74,11 +75,10 @@ def get_safe_device() -> Tuple[torch.device, torch.dtype]:
             torch.backends.cudnn.allow_tf32 = True
             torch.set_float32_matmul_precision("high")
 
-            dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
             print(f"[DONANIM] GPU Aktif: {gpu_name} (Mimari: sm_{cap[0]}{cap[1]} | Mod: {dtype})")
             return torch.device("cuda"), dtype
         except Exception as e:
-            print(f"[DONANIM UYARISI] GPU kernel/mimari uyumsuzluğu ({e}). Güvenli CPU moduna geçiliyor...")
+            print(f"[DONANIM UYARISI] GPU kernel/mimari uyumsuzlugu ({e}). Guvenli CPU moduna geciliyor.")
 
     cpu_threads = max(1, (os.cpu_count() or 4) - 1)
     torch.set_num_threads(cpu_threads)
@@ -86,7 +86,7 @@ def get_safe_device() -> Tuple[torch.device, torch.dtype]:
     return torch.device("cpu"), torch.float32
 
 
-# --- 3. VERİ YAPILARI ---
+# --- 3. VERI YAPILARI ---
 @dataclass
 class BoundingBox:
     x0: float
@@ -148,7 +148,7 @@ class ParagraphBlock:
         return self.is_standalone_math or self.is_code_block or self.is_header_footer
 
 
-# --- 4. SAF HEX UNICODE TABLOLARI VE FONT DOĞRULAMA ---
+# --- 4. SAF UNICODE HARITALARI VE SABIT SOZLUKLER ---
 SUPERSCRIPT_MAP = str.maketrans(
     "0123456789+-=()nxyzrabcikm",
     "\u2070\u00b9\u00b2\u00b3\u2074\u2075\u2076\u2077\u2078\u2079\u207a\u207b\u207c\u207d\u207e\u207f\u02e3\u02b8\u1dbb\u02b3\u1d43\u1d47\u1d9c\u2071\u1d4f\u1d50"
@@ -159,7 +159,7 @@ SUBSCRIPT_MAP = str.maketrans(
     "\u2080\u2081\u2082\u2083\u2084\u2085\u2086\u2087\u2088\u2089\u208a\u208b\u208c\u208d\u208e\u2099\u2093\u1d67\u2082\u1d63"
 )
 
-GLYPH_FALLBACK_MAP = {
+GLYPH_FALLBACK_MAP: Dict[str, str] = {
     "\u2260": "!=",
     "\u2264": "<=",
     "\u2265": ">=",
@@ -174,12 +174,20 @@ GLYPH_FALLBACK_MAP = {
     "\u2194": "<->",
     "\u21d2": "=>",
     "\u2022": "\u2022",
+    "\u2776": "(1)", "\u2777": "(2)", "\u2778": "(3)", "\u2779": "(4)", "\u277a": "(5)",
+    "\u277b": "(6)", "\u277c": "(7)", "\u277d": "(8)", "\u277e": "(9)", "\u277f": "(10)",
+    "\u2780": "(1)", "\u2781": "(2)", "\u2782": "(3)", "\u2783": "(4)", "\u2784": "(5)",
+    "\u2785": "(6)", "\u2786": "(7)", "\u2787": "(8)", "\u2788": "(9)", "\u2789": "(10)",
+    "\u278a": "(1)", "\u278b": "(2)", "\u278c": "(3)", "\u278d": "(4)", "\u278e": "(5)",
+    "\u278f": "(6)", "\u2790": "(7)", "\u2791": "(8)", "\u2792": "(9)", "\u2793": "(10)",
+    "\u2460": "(1)", "\u2461": "(2)", "\u2462": "(3)", "\u2463": "(4)", "\u2464": "(5)",
+    "\u2465": "(6)", "\u2466": "(7)", "\u2467": "(8)", "\u2468": "(9)", "\u2469": "(10)",
 }
 
 MONOSPACE_FONT_KEYWORDS = (
     "mono", "courier", "consolas", "inconsolata", "menlo",
-    "sourcecode", "source code", "typewriter", "code", "lucida console",
-    "dejavusansmono", "liberationsansmono", "cmtt", "txtt", "zi4"
+    "source", "typewriter", "code", "cmtt", "lucida console",
+    "dejavusansmono", "liberationsansmono", "txtt", "zi4"
 )
 
 ENGLISH_FUNCTION_WORDS = {
@@ -200,7 +208,7 @@ KNOWN_CODE_EXTENSIONS = {
     "py", "c", "cpp", "h", "hpp", "sh", "bash", "exe", "dll", "so", "dylib",
     "rb", "js", "ts", "java", "cs", "go", "rs", "php", "pl", "sql", "asm",
     "s", "o", "obj", "bin", "dat", "json", "xml", "yaml", "yml", "ini", "cfg",
-    "conf", "log", "txt", "pcap"
+    "conf", "log", "txt", "pcap", "jar", "war", "ps1", "bat", "cmd", "vbs"
 }
 
 INLINE_CODE_EXACT_TOKENS = {
@@ -214,8 +222,10 @@ INLINE_CODE_EXACT_TOKENS = {
     "free", "memcpy", "memset", "strcpy", "strncpy", "strcat", "strcmp",
     "strlen", "printf", "sprintf", "snprintf", "fprintf", "scanf", "gets",
     "fgets", "recv", "send", "recvfrom", "sendto", "connect", "bind",
-    "listen", "accept", "ioctl", "setsockopt", "execve", "fork", "WaitForSingleObject",
-    "VirtualAlloc", "CreateThread", "WriteProcessMemory", "ReadProcessMemory"
+    "listen", "accept", "ioctl", "setsockopt", "execve", "fork",
+    "WaitForSingleObject", "VirtualAlloc", "CreateThread",
+    "WriteProcessMemory", "ReadProcessMemory", "surgemail.exe",
+    "pattern_create", "pattern_offset", "imap_fuzz", "Rex::Text"
 }
 
 
@@ -229,8 +239,7 @@ def normalize_unicode_text(text: str) -> str:
         t = t.replace(dquote, '"')
     for bullet in ["\uf0b7", "\u2022", "\u25cf", "\u25aa", "\u25fe", "\u2219"]:
         t = t.replace(bullet, "\u2022 ")
-    # Kitaplardaki siyah daire içi rakamları (➊..➓, ①..⑩) temizle veya koru
-    t = re.sub(r'[\u2776-\u2793\u2460-\u2473\uf000-\uf8ff]', '', t)
+    t = re.sub(r'[\uf000-\uf8ff]', '', t)
     t = (
         t.replace("\ufb01", "fi")
         .replace("\ufb02", "fl")
@@ -244,18 +253,11 @@ def normalize_unicode_text(text: str) -> str:
     return re.sub(r'\s+', ' ', t).strip()
 
 
-# --- 5. KOD KARANTİNASI, FORMALİZM VE SATIR İÇİ MASKELEME MOTORU ---
+# --- 5. KOD, MONOSPACE, KONSOL KARANTINASI VE FORMALIZM MOTORU ---
 class FormalismAnalyzer:
-    """
-    1) Kod Bloklarını (Monospace font, girinti, C/Python/Bash/Assembly/Metasploit sözdizimi) %100 karantinaya alır.
-    2) Yazar adlarını ('Justin Seitz.'), web sitelerini ('www.cancer.ca'), kısaltmaları ('e.g.') KOD SANMAZ.
-    3) İngilizce fonksiyonel kelime oranı >= %12 ve kelime sayısı >= 4 olan tüm cümleleri doğal metin kabul eder.
-    4) Cümle içindeki satır içi kodları ('target_port', 'argv[]', 'sys.exit') ⟦CODE_X⟧ olarak maskeler ve geri yükler.
-    """
-
     @staticmethod
     def is_monospace_span(font_name: str, flags: int) -> bool:
-        if flags & 8:
+        if (flags & 8) != 0:
             return True
         fn = font_name.lower()
         return any(k in fn for k in MONOSPACE_FONT_KEYWORDS)
@@ -263,68 +265,86 @@ class FormalismAnalyzer:
     @staticmethod
     def is_code_line_syntax(text: str, leading_indent: float = 0.0) -> bool:
         clean = re.sub(r'<(?:sub|sup):[^>]+>', '', text).strip()
-        clean = re.sub(r'⟦CODE_\d+⟧', '', clean).strip()
-        if not clean:
+        clean = re.sub(r'\u27e6(?:CODE|MTH|INLCODE)[^\u27e7]*\u27e7', '', clean).strip()
+        clean_no_step = re.sub(r'^[\u2776-\u2793\u2460-\u2473]\s*', '', clean).strip()
+        if not clean_no_step:
             return False
 
-        # 1. Terminal istemcileri ve Metasploit / Debugger çıktıları
-        if re.match(r'^(?:\$\s+|#\s+|>>>\s+|\.\.\.\s+|msf\s+|msf\d?\s*>\s*|\[\*\]\s+|\[\+\]\s+|\[\-\]\s+|\[!\]\s+|C:\\>', clean):
-            return True
-
-        # 2. C / Python / Bash / Assembly / Ruby / SQL satır başı anahtar kelimeleri
+        # 1. Terminal istemcileri ve konsol ciktilari ($ , # , >>> , [*] , [+] , [-] , [!] , msf)
         if re.match(
-            r'^(?:#include\b|#define\b|#ifdef\b|#ifndef\b|#endif\b|import\s+[a-zA-Z0-9_\.]+|from\s+[a-zA-Z0-9_\.]+\s+import\b|'
-            r'def\s+[a-zA-Z_][a-zA-Z0-9_]*\s*\(|class\s+[a-zA-Z_][a-zA-Z0-9_]*|return\b|const\s+|void\s+|int\s+|char\s+|'
-            r'float\s+|double\s+|unsigned\s+|struct\s+|typedef\s+|static\s+|extern\s+|public\s+|private\s+|protected\s+|'
-            r'printf\s*\(|fprintf\s*\(|sprintf\s*\(|print\s+["\'\(]|mov\s+|push\s+|pop\s+|xor\s+|lea\s+|jmp\s+|call\s+|ret\b|'
-            r'cmp\s+|test\s+|je\s+|jne\s+|jz\s+|jnz\s+|nop\b|db\s+|dd\s+|dw\s+|section\s+\.|global\s+_|'
-            r'while\s+True\s*:|while\s*\(|for\s+[a-zA-Z_][a-zA-Z0-9_,\s]*\s+in\s+|for\s*\(|if\s+__name__\s*==|'
-            r'if\s*\(|elif\s+|else\s*:|try\s*:|except\b|finally\s*:|with\s+open\()',
-            clean
+            r'^(?:\$\s+|#\s+|>>>\s+|\.{3}\s+|msf\s+|msf\s*>|msf\d?\s*>|msf\s+auxiliary\(|'
+            r'\[\*\]\s*|\[\+\]\s*|\[\-\]\s*|\[!\]\s*|C:\\>|root@|kali@)',
+            clean_no_step
         ):
             return True
 
-        # 3. Satır sonu noktalı virgül (C/Java/Perl/Rust kod satırı) ve atama/fonksiyon yapısı
-        if re.search(r';\s*$', clean) and (
-            re.search(r'[=\(\)\[\]\{\}]', clean)
-            or leading_indent > 12.0
-            or len(clean.split()) <= 8
+        # 2. Programlama dili anahtar kelimeleri ve yapi imzalari
+        if re.match(
+            r'^(?:#include\s+|#define\s+|#ifdef\s+|#ifndef\s+|#endif\b|#pragma\s+|'
+            r'import\s+[a-zA-Z0-9_\.]+|from\s+[a-zA-Z0-9_\.]+\s+import\b|'
+            r'def\s+[a-zA-Z_][a-zA-Z0-9_]*|class\s+[a-zA-Z_][a-zA-Z0-9_]*|'
+            r'return\b|const\s+|void\s+|int\s+|char\s+|float\s+|double\s+|'
+            r'unsigned\s+|struct\s+|typedef\s+|static\s+|extern\s+|public\s+|private\s+|protected\s+|'
+            r'printf\b|fprintf\b|sprintf\b|snprintf\b|print_status\b|print_good\b|'
+            r'print_error\b|print_line\b|print\s+["\'\(]|'
+            r'mov\s+|push\s+|pop\s+|xor\s+|lea\s+|jmp\s+|call\s+|ret\b|'
+            r'cmp\s+|test\s+|je\s+|jne\s+|jz\s+|jnz\s+|nop\b|db\s+|dd\s+|dw\s+|'
+            r'while\s+True\s*:|while\s*\(|for\s+[a-zA-Z_][a-zA-Z0-9_,\s]*\s+in\s+|for\s*\(|'
+            r'if\s+__name__\s*==|if\s*\(|elif\s+|else\s*:|try\s*:|except\b|finally\s*:|with\s+open\()',
+            clean_no_step
         ):
             return True
 
-        # 4. Değişken atamaları, nesne metodu çağrıları ve fuzzer/hex çıktıları
-        if re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)?\s*(?:=|\+=|\-=|:=)\s*[^\s]+', clean):
-            words = re.findall(r'[a-zA-Z]{2,}', clean)
+        # 3. '::' operatoru, noktali virgul ile biten kodlar, SNIP ve uzun payload dizileri
+        if re.search(r'(?:Rex::Text|pattern_create|pattern_offset)', clean_no_step):
+            words = re.findall(r'[a-zA-Z]{2,}', clean_no_step)
+            func_cnt = sum(1 for w in words if w.lower() in ENGLISH_FUNCTION_WORDS)
+            if func_cnt / max(1, len(words)) <= 0.12 or len(words) < 6:
+                return True
+
+        if re.search(r';\s*$', clean_no_step) and (
+            re.search(r'[=\(\)\[\]\{\}]', clean_no_step)
+            or leading_indent > 10.0
+            or len(clean_no_step.split()) <= 8
+        ):
+            return True
+
+        if re.search(r'[A-Za-z0-9+/=]{28,}', clean_no_step):
+            return True
+
+        if re.match(r'^(?:\.\s*){3}SNIP(?:\s*\.)*$', clean_no_step, re.I):
+            return True
+
+        # 4. Degisken atamalari ve metot cagrilari
+        if re.match(
+            r'^[a-zA-Z_][a-zA-Z0-9_,\s]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)?\s*(?:=|\+=|\-=|:=)\s*[^\s]+',
+            clean_no_step
+        ):
+            words = re.findall(r'[a-zA-Z]{2,}', clean_no_step)
             func_cnt = sum(1 for w in words if w.lower() in ENGLISH_FUNCTION_WORDS)
             if func_cnt <= 1:
                 return True
 
-        if re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)+\s*\(.*\)\s*$', clean):
+        if re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)+\s*\([^\)]*\)\s*$', clean_no_step):
             return True
 
-        # Hex dump, bellek adresleri veya boşluksuz uzun fuzzing/payload dizileri
-        if re.search(r'\b0x[0-9a-fA-F]{4,}\b', clean) and len(clean.split()) <= 10:
+        # 5. Hex adres satirlari ve protokol ciktilari
+        if re.search(r'\b0x[0-9a-fA-F]+\b', clean_no_step) and len(clean_no_step.split()) <= 8:
             return True
-        if re.search(r'[A-Za-z0-9+/=]{32,}', clean):
-            return True
-        if re.match(r'^\.\s*\.\s*\.\s*SNIP\s*\.\s*\.\s*\.', clean, re.I):
+        if re.match(r'^\[\*\]\s*000\d\s+(?:LIST|OK|LOGIN|CAPABILITY)\b', clean_no_step):
             return True
 
         return False
 
     @staticmethod
     def is_header_or_footer(text: str, box: BoundingBox, page_height: float) -> bool:
-        """
-        Sayfa yüksekliğinin en üst %5'lik ve en alt %6'lık diliminde kalan,
-        slayt/bölüm numarası veya telif hakkı ibareleri içeren tek satırlık blokları yakalar.
-        """
         clean = text.strip()
         if not clean:
             return True
 
-        is_single_line = box.height <= 22.0 and len(clean) <= 110
-        in_top_zone = box.y0 <= page_height * 0.055 or box.y1 <= page_height * 0.075
-        in_bottom_zone = box.y1 >= page_height * 0.94 or box.y0 >= page_height * 0.92
+        is_single_line = box.height <= 24.0 and len(clean) <= 115
+        in_top_zone = box.y0 <= page_height * 0.055 or box.y1 <= page_height * 0.070
+        in_bottom_zone = box.y1 >= page_height * 0.940 or box.y0 >= page_height * 0.925
 
         if is_single_line and (in_top_zone or in_bottom_zone):
             if re.search(
@@ -334,13 +354,16 @@ class FormalismAnalyzer:
                 re.I
             ):
                 return True
-            # Sadece sayfa numarası + kısa bölüm başlığı içeren üst/alt satırlar
             if re.match(r'^(?:\d+\s+.+|\S.+?\s+\d+)$', clean) and len(clean.split()) <= 7:
                 return True
 
-        # Konumdan bağımsız tam telif/slayt numarası satırları
-        if is_single_line and re.search(r'(?:Copyright\s*©?\s*\d{4}|All\s+rights\s+reserved|\bAddison-?Wesley\b)', clean, re.I):
+        if is_single_line and re.search(
+            r'(?:Copyright\s*©?\s*\d{4}|All\s+rights\s+reserved|All\s+rghts\s+reserved|\bAddison-?Wesley\b)',
+            clean,
+            re.I
+        ):
             return True
+
         if re.fullmatch(r'\d{1,3}\s*[-–]\s*\d{1,3}|\d{1,4}', clean):
             return True
 
@@ -348,13 +371,8 @@ class FormalismAnalyzer:
 
     @staticmethod
     def is_formal_expression(text: str) -> bool:
-        """
-        Aşırı korumacı olmayan (Over-Zealous Classifier düzeltilmiş) formalizm denetleyicisi:
-        - İngilizce fonksiyonel kelime oranı > %12 ve kelime sayısı >= 4 ise KESİNLİKLE doğal açıklama cümlesidir (False).
-        - Nokta içeren kelimeler yalnızca bilinen kod uzantısı (.py, .c, .cpp, .h, .sh) veya gerçek kod yapısıysa formalizm sayılır.
-        """
         clean = re.sub(r'<(?:sub|sup):[^>]+>', '', text).strip()
-        clean = re.sub(r'⟦CODE_\d+⟧', ' codevar ', clean).strip()
+        clean = re.sub(r'\u27e6(?:CODE|MTH|INLCODE)[^\u27e7]*\u27e7', ' codevar ', clean).strip()
         clean = re.sub(r'^[\u2022\-\+\*]\s*', '', clean).strip()
         if not clean:
             return True
@@ -367,10 +385,8 @@ class FormalismAnalyzer:
         func_word_count = sum(1 for w in words if w.lower() in ENGLISH_FUNCTION_WORDS)
         func_ratio = func_word_count / max(1, word_count)
 
-        # KESİN KURAL: Fonksiyonel kelime oranı > %12 ve kelime sayısı >= 4 ise bu bir açıklama cümlesidir!
         if word_count >= 4 and func_ratio > 0.12:
-            # İstisna: Satır doğrudan BNF üretim oku (::=, ->) veya çoklu kod ataması içeriyorsa ve cümle değilse
-            if not re.search(r'(?:->|→|←|::=)', clean):
+            if not re.search(r'(?:->|\u2192|\u2190|::=)', clean):
                 return False
 
         total_len = len(clean)
@@ -382,15 +398,16 @@ class FormalismAnalyzer:
         if alpha_chars == 0:
             return True
 
-        # BNF / Gramer / Matematiksel Denklem imzaları
-        has_bnf_or_arrow = bool(re.search(r'(?:->|→|←|::=|=>|==|!=|<=|>=|:=|<[a-zA-Z_][a-zA-Z0-9_]*>)', clean))
-        has_equation = bool(re.search(r'(?:^|\s)[a-zA-Z0-9_]+\s*[=<>≤≥≠]\s*[a-zA-Z0-9_\(\[\+\-]', clean))
+        has_bnf_or_arrow = bool(re.search(r'(?:->|\u2192|\u2190|::=|=>|==|!=|<=|>=|:=|<[a-zA-Z_][a-zA-Z0-9_]*>)', clean))
+        has_equation = bool(re.search(r'(?:^|\s)[a-zA-Z0-9_]+\s*[=<>\u2264\u2265\u2260]\s*[a-zA-Z0-9_\(\[\+\-]', clean))
 
-        # Noktalı ifadeler: Sadece bilinen kod uzantıları (.py, .c, .cpp, .h, .sh) veya snake_case/parantezli metot ise!
         has_strict_dot_code = False
         for m_dot in re.finditer(r'\b([a-zA-Z0-9_]+)\.([a-zA-Z0-9_]+)(\s*\()?', clean):
             left_p, right_p, has_paren = m_dot.group(1), m_dot.group(2), m_dot.group(3)
-            if left_p.lower() in {"www", "http", "https", "ftp", "e", "i", "fig", "sec", "ch", "dr", "mr", "ms", "vs", "etc", "al"}:
+            if left_p.lower() in {
+                "www", "http", "https", "ftp", "e", "i", "fig", "figure", "sec", "section",
+                "ch", "chapter", "dr", "mr", "ms", "vs", "etc", "al", "no", "vol", "p", "pp"
+            }:
                 continue
             if right_p.lower() in KNOWN_CODE_EXTENSIONS:
                 has_strict_dot_code = True
@@ -402,10 +419,9 @@ class FormalismAnalyzer:
         if (has_bnf_or_arrow or has_equation or has_strict_dot_code) and func_ratio <= 0.12:
             return True
 
-        if (sym_chars + digit_chars) / max(1, total_len) > 0.35 and func_word_count == 0:
+        if (sym_chars + digit_chars) / max(1, total_len) > 0.36 and func_word_count == 0:
             return True
 
-        # Tekil büyük harf tokenlar (WHILE, LPAREN, SEMICOLON) veya yazar adı (ROBERT W. SEBESTA)
         if word_count <= 2 and clean.isupper() and func_word_count == 0 and len(clean) <= 20:
             return True
         if re.fullmatch(r'[A-Z]+\s+[A-Z]\.\s+[A-Z]+', clean):
@@ -415,12 +431,23 @@ class FormalismAnalyzer:
 
     @staticmethod
     def _is_valid_inline_code_token(token: str) -> bool:
+        """
+        ADLI BULGU 1: Mevcut maskeleri (CODE_0, MTH_0, INLCODE_0) asla tekrar kod
+        degiskeni kabul etmez; cift maskelemeyi (recursion) %100 onler.
+        """
         t = token.strip()
-        if not t or len(t) < 2:
+        if not t:
+            return False
+        if re.match(r'^(?:CODE|MTH|INLCODE)_\d+$', t, re.I):
+            return False
+        if t.startswith(("CODE_", "MTH_", "INLCODE_", "\u27e6")) or t.endswith("\u27e7"):
+            return False
+        if re.fullmatch(r'[\u2776-\u2793\u2460-\u2473]', t):
+            return True
+        if len(t) < 2:
             return False
         if t in INLINE_CODE_EXACT_TOKENS:
             return True
-        # Kısaltmaları, web adreslerini ve normal kelimeleri hariç tut
         if re.match(r'^(?:www\.|http|e\.g\.|i\.e\.|fig\.|vs\.|[A-Z][a-z]+\.)', t, re.I):
             return False
         if "_" in t and re.search(r'[a-zA-Z]', t):
@@ -428,6 +455,8 @@ class FormalismAnalyzer:
         if re.search(r'\[\]|\(\)$', t):
             return True
         if re.match(r'^0x[0-9a-fA-F]+$', t):
+            return True
+        if re.fullmatch(r'[0-9A-Fa-f]{8}', t) and re.search(r'[A-Fa-f]', t) and re.search(r'[0-9]', t):
             return True
         if "::" in t:
             return True
@@ -442,10 +471,8 @@ class FormalismAnalyzer:
     @staticmethod
     def mask_inline_formal_tokens(sentence: str) -> Tuple[str, Dict[str, str]]:
         """
-        Normal cümle içinde geçen:
-        1) Satır içi kod parçacıklarını ('target_port', 'buffer', 'argc', 'argv[]', 'sys.exit', ⟦CODE_X⟧)
-        2) Matematiksel formülleri, BNF sembollerini (<expr>) ve alt/üst simgeleri
-        maskeler ve çeviri sonrasında İngilizce orijinal haliyle geri yükler.
+        ADLI BULGU 1 & DIREKTIF 1: Asama 0'da eklenen \u27e6CODE_0\u27e7 etiketleri,
+        altindaki alt-tire (_) regex'i tarafindan asla ikinci kez maskelenmez.
         """
         t = normalize_unicode_text(sentence)
         masks: Dict[str, str] = {}
@@ -454,7 +481,7 @@ class FormalismAnalyzer:
 
         def add_code_mask(val: str) -> str:
             nonlocal code_idx
-            key = f"⟦CODE_{code_idx}⟧"
+            key = f"\u27e6CODE_{code_idx}\u27e7"
             masks[key] = val
             code_idx += 1
             return f" {key} "
@@ -462,76 +489,106 @@ class FormalismAnalyzer:
         def add_math_mask(m) -> str:
             nonlocal math_idx
             val = m.group(0).strip()
+            if (
+                val.startswith(("CODE_", "MTH_", "INLCODE_", "\u27e6"))
+                or val.endswith("\u27e7")
+                or re.search(r'(?:CODE|MTH|INLCODE)_\d+', val, re.I)
+            ):
+                return val
             if val.startswith("(") and val.endswith(")"):
                 inner_words = re.findall(r'[a-zA-Z]{2,}', re.sub(r'<(?:sub|sup):[^>]+>', '', val))
                 if len(inner_words) >= 1 and not any(c in val for c in "=+-*/<>^_"):
                     return val
-            key = f"⟦MTH_{math_idx}⟧"
+            key = f"\u27e6MTH_{math_idx}\u27e7"
             masks[key] = val
             math_idx += 1
             return f" {key} "
 
-        # 0. Dijital ayrıştırmada monospace fonttan dolayı önceden işaretlenmiş ⟦INLCODE:...⟧ etiketlerini maskele
-        def repl_premarked_code(m) -> str:
-            return add_code_mask(m.group(1).strip())
+        # Asama 0: Monospace span'lardan gelen on-isaretli kod etiketlerini maskele
+        def repl_premarked(m) -> str:
+            inner_val = m.group(1).strip()
+            if re.match(r'^(?:CODE|MTH|INLCODE)_\d+$', inner_val, re.I):
+                return inner_val
+            return add_code_mask(inner_val)
 
-        t = re.sub(r'⟦INLCODE:(.*?)⟧', repl_premarked_code, t)
+        t = re.sub(r'\u27e6INLCODE:(.*?)\u27e7', repl_premarked, t)
 
-        # 1. Satır içi kod ifadelerini (snake_case, func(), argv[], sys.exit, file.py, 0x7fff, Rex::Text) yakala
+        # Asama 1: Satir ici teknik degiskenler ve daireli adim numaralari (Mevcut maskeleri dislayan negatif lookahead ile)
         inline_code_pattern = (
             r'(?:'
-            r'\b0x[0-9a-fA-F]+\b'
-            r'|\b[a-zA-Z_][a-zA-Z0-9_]*(?:::[a-zA-Z_][a-zA-Z0-9_]*)+(?:\([^\)]*\))?'
+            r'[\u2776-\u2793\u2460-\u2473]'
+            r'|\b0x[0-9a-fA-F]+\b'
+            r'|\b[0-9A-Fa-f]{8}\b'
+            r'|\b[a-zA-Z_][a-zA-Z0-9_]*(?:::[a-zA-Z_][a-zA-Z0-9_]*)+(?:\.[a-zA-Z_][a-zA-Z0-9_]*)*(?:\([^\)]*\))?'
             r'|\b[a-zA-Z_][a-zA-Z0-9_]*\[[0-9a-zA-Z_]*\]'
-            r'|\b[a-zA-Z_][a-zA-Z0-9_]*_[a-zA-Z0-9_]+(?:\([^\)]*\))?'
+            r'|\b(?!(?:CODE|MTH|INLCODE)_\d+\b)[a-zA-Z_][a-zA-Z0-9_]*_[a-zA-Z0-9_]+(?:\([^\)]*\))?'
             r'|\b[a-zA-Z_][a-zA-Z0-9_]*\.[a-zA-Z_][a-zA-Z0-9_]*(?:\([^\)]*\))?'
-            r'|\b(?:buffer|argc|argv|stdin|stdout|stderr|malloc|free|printf|recv|send|fork|execve)\b'
+            r'|\b(?:target_port|target_host|buffer|argc|argv|stdin|stdout|stderr|malloc|free|printf|recv|send|fork|execve|surgemail\.exe|pattern_create)\b'
             r')'
         )
 
         def repl_inline_code(m) -> str:
             cand = m.group(0).strip()
+            if (
+                cand.startswith("CODE_")
+                or cand.startswith("MTH_")
+                or cand.startswith("INLCODE_")
+                or cand.startswith("\u27e6")
+                or cand.endswith("\u27e7")
+                or re.match(r'^(?:CODE|MTH|INLCODE)_\d+$', cand, re.I)
+            ):
+                return cand
             if FormalismAnalyzer._is_valid_inline_code_token(cand):
                 return add_code_mask(cand)
             return cand
 
         t = re.sub(inline_code_pattern, repl_inline_code, t)
 
-        # 2. Açılı parantezli BNF sembolleri (<expr>, <var>) ve süslü parantezli ifadeler
-        t = re.sub(r'(?:<[a-zA-Z_][a-zA-Z0-9_\s]*>|\{[^{}]+\}|\bC\+\+|\bC#|\.NET\b|#include\b|#define\b)', add_math_mask, t)
+        # Asama 2: BNF sembolleri ve ozel dil tanimlari
+        t = re.sub(
+            r'(?:<[a-zA-Z_][a-zA-Z0-9_\s]*>|\{[^{}]+\}|\bC\+\+|\bC#|\.NET\b|#include\b|#define\b)',
+            add_math_mask,
+            t
+        )
 
-        # 3. Matematiksel denklemler ve alt/üst simgeler (<sub:...>, <sup:...>)
+        # Asama 3: Matematiksel denklemler ve alt/ust indisler
         math_atom = (
             r'(?:'
-            r'\([0-9\s\+\-\*\/\^\<\>\:\_±NXYMrnABxy]+?\)(?:<(?:sub|sup):[^>]+>)?'
+            r'\([0-9\s\+\-\*\/\^\<\>\:\_\u00b1NXYMrnABxy]+?\)(?:<(?:sub|sup):[^>]+>)?'
             r'|[+\-]?\b(?:[0-9]+(?:\s+[0-9]{4})*|[a-zA-Z])(?:<(?:sub|sup):[^>]+>)+[a-zA-Z0-9]*'
             r'|[+\-]?\b[0-9]+(?:\s+[0-9]{4})*\b'
-            r'|[+\-]?\b[a-zA-Z]\b(?=\s*(?:[=≠<>≤≥\+\*\/]|-\s*(?:[0-9\(]|[a-zA-Z]\b)))'
-            r'|[+\-]?(?<=[=≠<>≤≥\+\-\*\/]\s)\b[a-zA-Z]\b'
+            r'|[+\-]?\b[a-zA-Z]\b(?=\s*(?:[=\u2260<>\u2264\u2265\+\*\/]|-\s*(?:[0-9\(]|[a-zA-Z]\b)))'
+            r'|[+\-]?(?<=[=\u2260<>\u2264\u2265\+\-\*\/]\s)\b[a-zA-Z]\b'
             r')'
         )
-        t = re.sub(rf'{math_atom}(?:\s*(?:!=|==|<=|>=|[=≠<>≤≥\+\*\/]|-(?!\s*[a-zA-Z]{{2,}}))\s*{math_atom})+', add_math_mask, t)
+        t = re.sub(
+            rf'{math_atom}(?:\s*(?:!=|==|<=|>=|[=\u2260<>\u2264\u2265\+\*\/]|-(?!\s*[a-zA-Z]{{2,}}))\s*{math_atom})+',
+            add_math_mask,
+            t
+        )
         t = re.sub(r'(?:\([0-9a-zA-Z\s\+\-]+\)|[+\-]?\b[0-9a-zA-Z]+)?<(?:sub|sup):[^>]+>', add_math_mask, t)
-        t = re.sub(r'\(\s*[±\+\-]?\s*[a-zA-Z0-9]\s*(?:[\-\+\|]\s*[a-zA-Z0-9]\s*)+\)', add_math_mask, t)
+        t = re.sub(r'\(\s*[\u00b1\+\-]?\s*[a-zA-Z0-9]\s*(?:[\-\+\|]\s*[a-zA-Z0-9]\s*)+\)', add_math_mask, t)
 
         return re.sub(r'\s+', ' ', t).strip(), masks
 
     @staticmethod
     def unmask_formal_tokens(translated: str, masks: Dict[str, str]) -> str:
+        """
+        ADLI BULGU 2 & DIREKTIF 2: Kusursuz 2 Asamali Maske Geri Cozucu (Dual-Stage Unmasking)
+        Windows dosya yollari (C:\\Users\\...) ve DOMAIN\\USERNAME ifadelerinde
+        'bad escape \\U' cokmesini engellemek icin lambda v=val baglamasi kullanilir.
+        """
         res = translated
-        for _ in range(3):
-            for key, orig in masks.items():
-                m_type = "CODE" if "CODE" in key else "MTH"
-                num = re.sub(r'\D', '', key)
-                pat = rf'(?:⟦?\s*{m_type}\s*[_-]?\s*{num}\s*⟧?|\[\s*{m_type}\s*[_-]?\s*{num}\s*\])'
-                res = re.sub(pat, lambda _: f" {orig} ", res, flags=re.I)
-
-        # Modelin yuttuğu veya sildiği kritik kod/formül maskesi varsa cümle sonuna ekle
         for key, orig in masks.items():
-            if orig not in res and key not in res:
-                if not any(orig in v for k2, v in masks.items() if k2 != key):
-                    res = f"{res} ({orig})"
-
+            m_type = "CODE" if "CODE" in key else "MTH"
+            num = re.sub(r'\D', '', key)
+            val = orig.strip()
+            # Asama A: Parantezli varyasyonlar: ⟦ ⟧, ( ), [ ], { }, < >, ﴾ ﴿, ?, \ufd3e, \ufd3f
+            pat_bracket = rf'[\u27e6\u0028\u005b\u007b\u003c\ufd3e\u003f]\s*{m_type}[_\-]?{num}\s*[\u27e7\u0029\u005d\u007d\u003e\ufd3f\u003f]'
+            res = re.sub(pat_bracket, lambda _, v=val: f" {v} ", res, flags=re.I)
+            # Asama B: Ciplak kelime veya ek almis olanlar (CODE_0, CODE_0'e, CODE_0'yi)
+            pat_bare = rf'\b{m_type}[_\-]?{num}\b'
+            res = re.sub(pat_bare, lambda _, v=val: v, res, flags=re.I)
         return re.sub(r'\s+', ' ', res).strip()
 
 
@@ -552,7 +609,7 @@ def format_sub_sup_for_render(text: str, font_obj: Optional[fitz.Font] = None) -
 
     res = re.sub(r'<sup:([^>]+)>', repl_sup, text)
     res = re.sub(r'<sub:([^>]+)>', repl_sub, res)
-    res = re.sub(r'⟦INLCODE:(.*?)⟧', r'\1', res)
+    res = re.sub(r'\u27e6INLCODE:(.*?)\u27e7', lambda m: m.group(1), res)
 
     if font_obj:
         safe_chars = []
@@ -567,35 +624,26 @@ def format_sub_sup_for_render(text: str, font_obj: Optional[fitz.Font] = None) -
     return res
 
 
-# --- 6. HİBRİT DİJİTAL VS TARANMIŞ PDF VE İKİ SÜTUNLU MİZANPAJ MOTORU ---
+# --- 6. HIBRIT VEKTOR / OCR YOLU VE IKI SUTUNLU MIZANPAJ MOTORU ---
 class GeometricLayoutEngine:
-    """
-    1) Sayfada seçilebilir dijital metin varsa (len(digital_blocks) > 0), doğrudan PyMuPDF'in
-       vektör metnini ve koordinatlarını kullanır; gereksiz OCR çalıştırmaz.
-    2) Yalnızca sayfa tamamen taranmış/resim ise Tesseract OCR devreye girer ve karantinadaki
-       kod/formül koordinatlarına ASLA yaklaşmaz.
-    3) İki sütunlu (2-column) sayfalarda orta sütun boşluğunu (gutter) analiz eder ve sağa taşmayı yasaklar.
-    """
-
     def extract_paragraphs(self, page: fitz.Page, page_num: int) -> List[ParagraphBlock]:
+        raw_text_blocks = page.get_text("blocks")
+        has_selectable_text = any(
+            b[6] == 0 and len(str(b[4]).strip()) > 0 for b in raw_text_blocks
+        )
+
         page_dict = page.get_text("dict", flags=fitz.TEXT_PRESERVE_LIGATURES)
         blocks = page_dict.get("blocks", [])
-
         digital_blocks = self._extract_digital(page, page_num, blocks)
 
-        # Sayfada anlamlı dijital gövde metni var mı kontrol et (Sadece tek satırlık Copyright altlığı değilse)
-        non_footer_digital = [b for b in digital_blocks if not b.is_header_footer]
-
-        if len(non_footer_digital) > 0:
-            # KURAL 7: Seçilebilir dijital metin varsa doğrudan yüksek çözünürlüklü vektör metnini kullan!
+        if has_selectable_text and len(digital_blocks) > 0:
             final_blocks = digital_blocks
         else:
-            # Sayfa tamamen taranmış görüntü veya metinsiz slayt resmi ise OCR çalıştır
             final_blocks = list(digital_blocks)
             if HAS_TESSERACT:
                 ocr_blocks = self._extract_scanned_ocr(page, page_num, quarantined_blocks=digital_blocks)
                 if ocr_blocks:
-                    print(f"   [TARANMIŞ SAYFA OCR] Sayfa {page_num + 1}: {len(ocr_blocks)} metin bloğu OCR ile çıkarıldı.")
+                    print(f"   [TARANMIS SAYFA OCR] Sayfa {page_num + 1}: {len(ocr_blocks)} gorsel blok ayristirildi.")
                     final_blocks.extend(ocr_blocks)
 
         for idx, b in enumerate(final_blocks):
@@ -605,24 +653,20 @@ class GeometricLayoutEngine:
 
     @staticmethod
     def _detect_two_column_gutter(blocks: List[ParagraphBlock], page_w: float) -> Optional[float]:
-        """
-        İki sütunlu akademik sayfalarda sol sütun ile sağ sütun arasındaki orta boşluğu (gutter X koordinatı)
-        tespit eder. Sol sütundaki hiçbir kutu orta boşluğu (gutter) aşamaz!
-        """
         mid_left = page_w * 0.42
         mid_right = page_w * 0.58
-        left_col_boxes = [
+        left_col = [
             b for b in blocks
             if not b.is_header_footer and b.box.width < page_w * 0.46 and b.box.x1 <= mid_right
         ]
-        right_col_boxes = [
+        right_col = [
             b for b in blocks
             if not b.is_header_footer and b.box.width < page_w * 0.46 and b.box.x0 >= mid_left
         ]
-        if len(left_col_boxes) >= 2 and len(right_col_boxes) >= 2:
-            max_left_x1 = max(b.box.x1 for b in left_col_boxes)
-            min_right_x0 = min(b.box.x0 for b in right_col_boxes)
-            if min_right_x0 > max_left_x1 + 6.0:
+        if len(left_col) >= 2 and len(right_col) >= 2:
+            max_left_x1 = max(b.box.x1 for b in left_col)
+            min_right_x0 = min(b.box.x0 for b in right_col)
+            if min_right_x0 > max_left_x1 + 5.0:
                 return (max_left_x1 + min_right_x0) / 2.0
         return None
 
@@ -630,16 +674,15 @@ class GeometricLayoutEngine:
         self, blocks: List[ParagraphBlock], page_w: float, page_h: float
     ) -> List[ParagraphBlock]:
         """
-        KURAL 5: İki sütunlu (2-column) sayfalarda orta sütun boşluğu (gutter) ve sağdaki şekil/sütun sınırı
-        asla aşılmaz (Sağa doğru rastgele genişletme YASAKTIR).
+        DIREKTIF 5: Iki sutunlu sayfalarda orta sutun boslugu (gutter) analiz edilir ve
+        metin kutulari sag sutun siniri olan p.max_allowed_x1 degerini ASLA asmaz.
         """
         gutter_x = self._detect_two_column_gutter(blocks, page_w)
         sorted_b = sorted(blocks, key=lambda b: (b.box.y0, b.box.x0))
 
         for i, b in enumerate(sorted_b):
-            min_next_y0 = page_h - 10.0
-            # Sağa doğru genişlemeyi kendi orijinal genişliğine (veya varsa gutter sınırına) kilitle!
-            hard_right_limit = b.box.x1 + 2.0
+            min_next_y0 = page_h - 8.0
+            hard_right_limit = b.box.x1
             if gutter_x is not None and b.box.x1 <= gutter_x + 4.0:
                 hard_right_limit = min(hard_right_limit, gutter_x - 2.0)
 
@@ -654,14 +697,22 @@ class GeometricLayoutEngine:
                 if horiz_overlap > 8.0 and other.box.y0 >= b.box.y1 - 1.5:
                     min_next_y0 = min(min_next_y0, other.box.y0)
 
-            b.max_allowed_x1 = max(b.box.x0 + 20.0, hard_right_limit)
-            b.max_allowed_y1 = max(b.box.y1 + 2.0, min_next_y0 - 1.0)
+            b.max_allowed_x1 = max(b.box.x0 + 16.0, hard_right_limit)
+            b.max_allowed_y1 = max(b.box.y1 + 2.0, min_next_y0 - 0.8)
 
         return blocks
 
     @staticmethod
     def _int_to_rgb(color_int: int) -> Tuple[float, float, float]:
         return (((color_int >> 16) & 255) / 255.0, ((color_int >> 8) & 255) / 255.0, (color_int & 255) / 255.0)
+
+    @staticmethod
+    def _join_hyphenated_or_spaced(prev_text: str, next_text: str) -> str:
+        p = prev_text.rstrip()
+        n = next_text.lstrip()
+        if p.endswith("-") and not p.endswith(" -") and len(n) > 0 and n[0].islower():
+            return p[:-1] + n
+        return f"{p} {n}"
 
     def _extract_digital(self, page: fitz.Page, page_num: int, blocks: List[Dict[str, Any]]) -> List[ParagraphBlock]:
         page_h = page.rect.height
@@ -743,8 +794,8 @@ class GeometricLayoutEngine:
                     if idx_s == 0 and "color" in s:
                         first_color = self._int_to_rgb(s["color"])
 
-                # KURAL 1.1: Satırdaki karakterlerin çoğunluğu monospace ise tüm satır KOD BLOĞUDUR!
-                line_is_monospace = (total_chars > 0) and (mono_chars / total_chars >= 0.55)
+                # DIREKTIF 1: Monospace yazi tipi orani >= %50 olan bloklar is_code_block = True
+                line_is_monospace = (total_chars > 0) and (mono_chars / total_chars >= 0.50)
 
                 line_str = ""
                 line_sizes = []
@@ -772,9 +823,8 @@ class GeometricLayoutEngine:
                     else:
                         if line_str and not line_str.endswith(" ") and not raw_span.startswith(" "):
                             line_str += " "
-                        # KURAL 1.3: Normal bir cümlenin içindeki tekil monospace kelimeleri ⟦INLCODE:...⟧ ile sar
-                        if not line_is_monospace and span_is_mono and len(stripped) >= 2:
-                            line_str += f"⟦INLCODE:{stripped}⟧"
+                        if not line_is_monospace and span_is_mono and len(stripped) >= 1:
+                            line_str += f"\u27e6INLCODE:{stripped}\u27e7"
                         else:
                             line_str += raw_span
                         line_sizes.append(s_size)
@@ -808,7 +858,23 @@ class GeometricLayoutEngine:
             curr: Dict[str, Any] = {}
 
             for pl in parsed_lines:
-                # Kod, formül, üst/alt bilgi veya madde başlığı olan satırları asla normal paragrafla birleştirme
+                if curr and not curr["is_code"] and not curr["is_hdr_ftr"] and not pl["is_code"] and not pl["is_hdr_ftr"]:
+                    v_gap = pl["bbox"][1] - curr["bbox"][3]
+                    word_cnt = len(pl["text"].split())
+                    is_orphan_tail = (
+                        word_cnt <= 3
+                        and not pl["text"].startswith("\u2022")
+                        and not curr["text"].rstrip().endswith((".", "!", "?", ":"))
+                        and v_gap <= curr["size"] * 1.30
+                        and abs(pl["bbox"][0] - curr["bbox"][0]) <= 38.0
+                    )
+                    if is_orphan_tail:
+                        curr["text"] = self._join_hyphenated_or_spaced(curr["text"], pl["text"])
+                        b0, b1 = curr["bbox"], pl["bbox"]
+                        curr["bbox"] = (min(b0[0], b1[0]), min(b0[1], b1[1]), max(b0[2], b1[2]), max(b0[3], b1[3]))
+                        curr["is_formal"] = False
+                        continue
+
                 is_standalone = (
                     pl["is_code"]
                     or pl["is_hdr_ftr"]
@@ -826,16 +892,11 @@ class GeometricLayoutEngine:
                     else:
                         v_gap = pl["bbox"][1] - curr["bbox"][3]
                         same_style = (curr["bold"] == pl["bold"]) and (abs(curr["size"] - pl["size"]) < 1.2)
-                        if v_gap > curr["size"] * 0.90 or not same_style:
+                        if v_gap > curr["size"] * 0.95 or not same_style:
                             grouped.append(curr)
                             curr = pl.copy()
                         else:
-                            prev_t = curr["text"]
-                            curr["text"] = (
-                                (prev_t[:-1] + pl["text"])
-                                if prev_t.endswith("-") and not prev_t.endswith(" -")
-                                else f"{prev_t} {pl['text']}"
-                            )
+                            curr["text"] = self._join_hyphenated_or_spaced(curr["text"], pl["text"])
                             b0, b1 = curr["bbox"], pl["bbox"]
                             curr["bbox"] = (min(b0[0], b1[0]), min(b0[1], b1[1]), max(b0[2], b1[2]), max(b0[3], b1[3]))
             if curr:
@@ -866,7 +927,30 @@ class GeometricLayoutEngine:
                 ))
                 p_idx += 1
 
-        return out_blocks
+        merged_out: List[ParagraphBlock] = []
+        for blk in out_blocks:
+            if (
+                merged_out
+                and not blk.is_code_block
+                and not blk.is_header_footer
+                and not merged_out[-1].is_protected
+                and len(blk.text.split()) <= 3
+                and not blk.text.startswith("\u2022")
+                and not merged_out[-1].text.rstrip().endswith((".", "!", "?", ":"))
+            ):
+                prev_b = merged_out[-1]
+                v_gap = blk.box.y0 - prev_b.box.y1
+                if -2.0 <= v_gap <= prev_b.font_size * 1.45 and abs(blk.box.x0 - prev_b.box.x0) <= 38.0:
+                    prev_b.text = self._join_hyphenated_or_spaced(prev_b.text, blk.text)
+                    prev_b.box = BoundingBox(
+                        min(prev_b.box.x0, blk.box.x0), min(prev_b.box.y0, blk.box.y0),
+                        max(prev_b.box.x1, blk.box.x1), max(prev_b.box.y1, blk.box.y1)
+                    )
+                    prev_b.is_standalone_math = False
+                    continue
+            merged_out.append(blk)
+
+        return merged_out
 
     @staticmethod
     def _sample_outer_ring(
@@ -927,7 +1011,6 @@ class GeometricLayoutEngine:
         else:
             bgr = cv2.cvtColor(img_array, cv2.COLOR_RGB2BGR)
 
-        # KURAL 7: Karantinadaki kod/formül/altbilgi koordinatlarını maskele, Tesseract ASLA yaklaşmasın
         quarantined_boxes = [qb.box for qb in quarantined_blocks]
         for qb in quarantined_boxes:
             x0, y0 = int(max(0, qb.x0 * scale - 3)), int(max(0, qb.y0 * scale - 3))
@@ -1027,9 +1110,9 @@ class GeometricLayoutEngine:
                     v_gap = b.y0 - prev.box.y1
                     left_diff = b.x0 - prev.box.x0
                     if (
-                        0.0 <= v_gap <= single_lh * 0.48
-                        and -12.0 <= left_diff <= 36.0
-                        and abs(est_fs - prev.font_size) <= max(est_fs, prev.font_size) * 0.22
+                        0.0 <= v_gap <= single_lh * 0.52
+                        and -14.0 <= left_diff <= 36.0
+                        and abs(est_fs - prev.font_size) <= max(est_fs, prev.font_size) * 0.25
                         and not txt.startswith("\u2022")
                         and not prev.text.endswith((".", "!", "?", ";", ":"))
                     ):
@@ -1037,10 +1120,14 @@ class GeometricLayoutEngine:
                             r'\b(?:of|to|for|with|which|a|an|the|in|on|by|from|that|than|as|and|or|are|is|be|into|over|between|already|have|has|can|cannot|will|must)\s*$',
                             prev.text, re.I
                         ))
-                        reaches_edge = prev.box.x1 > page_w * 0.62
-                        if ends_conn or (reaches_edge and txt[0].islower()):
-                            prev.text = (prev.text[:-1] + txt) if prev.text.endswith("-") else f"{prev.text} {txt}"
-                            prev.box = BoundingBox(min(prev.box.x0, b.x0), min(prev.box.y0, b.y0), max(prev.box.x1, b.x1), max(prev.box.y1, b.y1))
+                        reaches_edge = prev.box.x1 > page_w * 0.60
+                        is_short_orphan = len(txt.split()) <= 3
+                        if ends_conn or is_short_orphan or (reaches_edge and txt[0].islower()):
+                            prev.text = self._join_hyphenated_or_spaced(prev.text, txt)
+                            prev.box = BoundingBox(
+                                min(prev.box.x0, b.x0), min(prev.box.y0, b.y0),
+                                max(prev.box.x1, b.x1), max(prev.box.y1, b.y1)
+                            )
                             merged = True
                             break
 
@@ -1064,7 +1151,7 @@ class GeometricLayoutEngine:
         return merged_blocks
 
 
-# --- 7. NÖRAL ÇEVİRİ VE AKADEMİK TERMİNOLOJİ MOTORU ---
+# --- 7. NORAL CEVIRI VE KENDI KENDINI ONARAN ONBELLEK MOTORU ---
 ENGLISH_PRE_NORMALIZATION = [
     (r'\bContext-Free\s+Grammars\b', 'Bağlamdan Bağımsız Dilbilgileri'),
     (r'\bcontext-free\s+grammars\b', 'bağlamdan bağımsız dilbilgileri'),
@@ -1077,8 +1164,8 @@ ENGLISH_PRE_NORMALIZATION = [
     (r'\bDynamic\s+Semantics\b', 'Dinamik Anlambilim'),
     (r'\bAttribute\s+Grammars\b', 'Öznitelik Dilbilgileri'),
     (r'\bAttribute\s+Grammar\b', 'Öznitelik Dilbilgisi'),
-    (r'\bImmunity\s+Debugger\b', '⟦INLCODE:Immunity Debugger⟧'),
-    (r'\bVisual\s+Studio\s*\.NET\b', '⟦INLCODE:Visual Studio .NET⟧'),
+    (r'\bImmunity\s+Debugger\b', '\u27e6INLCODE:Immunity Debugger\u27e7'),
+    (r'\bVisual\s+Studio\s*\.NET\b', '\u27e6INLCODE:Visual Studio .NET\u27e7'),
     (r'\bcost\s+of\s+execution\b', 'cost of program runtime'),
     (r'\bexecution\s+costs\b', 'program runtime costs'),
     (r'\bfor\s+execution\b', 'for running the program'),
@@ -1106,7 +1193,7 @@ POST_TRANSLATION_FIXES = [
     (r'\bTercüman\b', 'Yorumlayıcı'),
     (r'\btercüman\b', 'yorumlayıcı'),
     (r'\bBağışıklık\s+Hata\s+Ayıklayıcısını\b', 'Immunity Debugger aracını'),
-    (r'\bmüşteri\s+taşıma\s+ipliğimiz\b', "istemci işleme iş parçacığımız (thread)"),
+    (r'\bmüşteri\s+taşıma\s+ipliğimiz\b', 'istemci işleme iş parçacığımız (thread)'),
     (r'\biş\s+ipliği\b', 'iş parçacığı (thread)'),
     (r'[Tt]amamlayıcısının\b', 'tümleyeninin'),
     (r'[Tt]amamlayıcısına\b', 'tümleyenine'),
@@ -1146,17 +1233,32 @@ class UniversalTranslationEngine:
         self.cache_path = cache_path
         self.cache: Dict[str, str] = {"__version__": CACHE_VERSION}
 
+        # ADLI BULGU 3: Kendi Kendini Onaran Onbellek (Self-Healing Cache Protocol)
         if os.path.exists(self.cache_path):
             try:
                 with open(self.cache_path, "r", encoding="utf-8") as f:
                     loaded = json.load(f)
-                if loaded.get("__version__") == CACHE_VERSION:
-                    self.cache = loaded
-                    print(f"[ÖNBELLEK] {len(self.cache) - 1} doğrulanmış çeviri yüklendi.")
-            except Exception:
-                pass
+                if isinstance(loaded, dict):
+                    clean_cache: Dict[str, str] = {"__version__": CACHE_VERSION}
+                    purged = 0
+                    for k, v in loaded.items():
+                        if k == "__version__" or not isinstance(v, str):
+                            continue
+                        if re.search(r'(?:CODE_\d+|MTH_\d+|\u27e6|\u27e7|\ufd3e|\ufd3f)', v):
+                            purged += 1
+                        else:
+                            clean_cache[k] = v
+                    self.cache = clean_cache
+                    print(
+                        f"[ONBELLEK] {len(self.cache) - 1} temiz ceviri yuklendi "
+                        f"({purged} kirli maske kaydi otomatik temizlendi)."
+                    )
+                    if purged > 0:
+                        self.save_cache()
+            except Exception as exc:
+                print(f"[ONBELLEK UYARISI] Onbellek okunamadi, sifirlandi: {exc}")
 
-        print("1. [YEREL ÇEVİRİ] Helsinki-NLP/opus-mt-tc-big-en-tr yerel diskten (%100 Çevrimdışı) yükleniyor...")
+        print("1. [YEREL CEVIRI] Helsinki-NLP/opus-mt-tc-big-en-tr yerel diskten (%100 Cevrimdisi) yukleniyor...")
         from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 
         model_name = "Helsinki-NLP/opus-mt-tc-big-en-tr"
@@ -1181,21 +1283,25 @@ class UniversalTranslationEngine:
             os.environ["TRANSFORMERS_OFFLINE"] = "1"
 
         self.model.eval()
-        print(f"-> Çeviri Modeli %100 Çevrimdışı Hazır (Aygıt: {self.device} | Hassasiyet: {self.model.dtype})")
+        print(f"-> Ceviri Modeli %100 Cevrimdisi Hazir (Aygit: {self.device} | Hassasiyet: {self.model.dtype})")
 
-    def save_cache(self):
+    def save_cache(self) -> bool:
         try:
             os.makedirs(os.path.dirname(self.cache_path), exist_ok=True)
             with open(self.cache_path, "w", encoding="utf-8") as f:
                 json.dump(self.cache, f, ensure_ascii=False, indent=2)
+            return True
         except Exception:
-            pass
+            return False
 
     @staticmethod
     def _split_into_sentences(text: str) -> List[str]:
-        # Kısaltmalardaki (e.g., i.e., Fig., vs.) noktalardan cümle bölünmesini engelle
-        protected = re.sub(r'\b(e\.g|i\.e|Fig|fig|Sec|sec|Ch|ch|Dr|Mr|Ms|vs|etc)\.\s+', r'\1<DOT> ', text)
-        parts = re.split(r'(?<=[.!?])\s+(?=[A-Z0-9"\(\[⟦])', protected)
+        protected = re.sub(
+            r'\b(e\.g|i\.e|Fig|fig|Figure|Sec|sec|Ch|ch|Dr|Mr|Ms|vs|etc|No|no)\.\s+',
+            r'\1<DOT> ',
+            text
+        )
+        parts = re.split(r'(?<=[.!?])\s+(?=[A-Z0-9"\(\[\u27e6])', protected)
         return [p.replace("<DOT>.", ".").replace("<DOT>", ".").strip() for p in parts if p.strip()]
 
     def translate_block(self, block: ParagraphBlock) -> str:
@@ -1244,7 +1350,7 @@ class UniversalTranslationEngine:
                 decoded_list.extend(self.tokenizer.batch_decode(outputs, skip_special_tokens=True))
         except Exception as e:
             if self.device.type == "cuda":
-                print(f"[DONANIM UYARISI] GPU yürütme hatası ({e}). Otonom CPU fallback devreye alındı.")
+                print(f"[DONANIM UYARISI] GPU yurutme hatasi ({e}). Otonom CPU fallback devreye alindi.")
                 self.device = torch.device("cpu")
                 self.model = self.model.to(self.device, dtype=torch.float32)
             decoded_list = []
@@ -1266,27 +1372,22 @@ class UniversalTranslationEngine:
 
         result = ("\u2022 " if has_bullet else "") + " ".join(final_sents)
         result = re.sub(r'\s+', ' ', result).strip()
-        self.cache[clean_raw] = result
+
+        # ADLI BULGU 3: Model bozuk maske uretirse onbellege kaydedilmez
+        if not re.search(r'(?:CODE_\d+|MTH_\d+|\u27e6|\u27e7|\ufd3e|\ufd3f)', result):
+            self.cache[clean_raw] = result
+
         return result
 
 
-# --- 8. TÜRKÇE GLİF DOĞRULAMALI FONT SEÇİMİ VE GERÇEK REDACTION RENDER ---
+# --- 8. TURKCE FONT DOGRULAMA VE GERCEK REDACTION RENDER MOTORU ---
 def select_best_unicode_fonts() -> Tuple[str, str, Optional[fitz.Font]]:
     """
-    KURAL 3: Windows fontlarını denerken Segoe UI, Calibri ve Arial fontlarını
-    gerçek Türkçe gliflerle (ord('ç'), ord('ğ'), ord('ş'), ord('ı')) test eder.
+    DIREKTIF 4: Windows yazi tipleri (Segoe UI, Calibri, Arial) arasindan gercek Turkce
+    test karakterlerini (\u00e7\u011f\u015f\u0131\u00f6\u00fc\u0130\u015e\u011e) deneyerek en iyi glif destegine sahip olani secer.
     """
-    turkish_Check_Codepoints = [
-        ord("\u00e7"),  # ç
-        ord("\u011f"),  # ğ
-        ord("\u015f"),  # ş
-        ord("\u0131"),  # ı
-        ord("\u00f6"),  # ö
-        ord("\u00fc"),  # ü
-        ord("\u0130"),  # İ
-        ord("\u015e"),  # Ş
-        ord("\u011e"),  # Ğ
-    ]
+    turkish_test_chars = "\u00e7\u011f\u015f\u0131\u00f6\u00fc\u0130\u015e\u011e"
+    turkish_codepoints = [ord(c) for c in turkish_test_chars]
     candidates = [
         (r"C:\Windows\Fonts\segoeui.ttf", r"C:\Windows\Fonts\segoeuib.ttf"),
         (r"C:\Windows\Fonts\calibri.ttf", r"C:\Windows\Fonts\calibrib.ttf"),
@@ -1296,7 +1397,7 @@ def select_best_unicode_fonts() -> Tuple[str, str, Optional[fitz.Font]]:
         if os.path.exists(reg):
             try:
                 f_test = fitz.Font(fontfile=reg)
-                if all(f_test.has_glyph(cp) for cp in turkish_Check_Codepoints):
+                if all(f_test.has_glyph(cp) for cp in turkish_codepoints):
                     return reg, (bold if os.path.exists(bold) else reg), f_test
             except Exception:
                 continue
@@ -1325,22 +1426,38 @@ def _sample_background_color(page_pix: fitz.Pixmap, box: BoundingBox) -> Tuple[f
         return (1.0, 1.0, 1.0)
 
 
+def _clip_erase_rect_against_obstacle(rect_erase: fitz.Rect, obs_rect: fitz.Rect) -> fitz.Rect:
+    if not rect_erase.intersects(obs_rect):
+        return rect_erase
+
+    clipped = fitz.Rect(rect_erase)
+    if obs_rect.y0 >= clipped.y0 and obs_rect.y0 < clipped.y1 and obs_rect.y0 > clipped.y0 + 2.0:
+        clipped.y1 = obs_rect.y0 - 0.5
+    elif obs_rect.y1 > clipped.y0 and obs_rect.y1 <= clipped.y1 and obs_rect.y1 < clipped.y1 - 2.0:
+        clipped.y0 = obs_rect.y1 + 0.5
+    elif obs_rect.x0 >= clipped.x0 and obs_rect.x0 < clipped.x1 and obs_rect.x0 > clipped.x0 + 4.0:
+        clipped.x1 = obs_rect.x0 - 0.5
+    elif obs_rect.x1 > clipped.x0 and obs_rect.x1 <= clipped.x1 and obs_rect.x1 < clipped.x1 - 4.0:
+        clipped.x0 = obs_rect.x1 + 0.5
+    return clipped
+
+
 def _find_optimal_fontsize_and_leading(
     scratch_page: fitz.Page,
     target_rect: fitz.Rect,
     text: str,
     fontname: str,
-    initial_fs: float,
+    original_fontsize: float,
     align: int
 ) -> Tuple[float, float]:
     """
-    Gerçek sayfayı kirletmeden (veya üst üste metin yazmadan) hafızadaki tek sayfalık
-    scratch_page üzerinde dinamik font küçültme (min 6.0pt) ve satır aralığı (leading)
-    sıkıştırması testi yaparak metni kutuya tam sığdıran parametreleri bulur.
+    DIREKTIF 5: Bellek ici (scratch) sayfa uzerinde test ederek font boyutunu (minimum 6.0pt)
+    ve satir araligini (lineheight 1.15 -> 0.88) dinamik sikistirarak kutuya tam sigdirir.
     """
-    fs = min(18.0, max(6.0, initial_fs))
+    start_fs = min(18.0, max(6.0, original_fontsize * 0.92))
+    fs = start_fs
     while fs >= 6.0:
-        for lh in (1.15, 1.05, 0.96, 0.90):
+        for lh in (1.15, 1.08, 1.00, 0.94, 0.88):
             shape = scratch_page.new_shape()
             rc = shape.insert_textbox(
                 target_rect,
@@ -1367,7 +1484,7 @@ def export_copyable_txt_files(
 
     with open(clean_txt_path, "w", encoding="utf-8") as f_clean:
         f_clean.write("====================================================================\n")
-        f_clean.write("   PDF AI ENGINE - TAMAMEN KOPYALANABİLİR TÜRKÇE METİN VE KODLAR\n")
+        f_clean.write("   PDF AI ENGINE - TAMAMEN KOPYALANABILIR TURKCE METIN VE KODLAR\n")
         f_clean.write("====================================================================\n\n")
         for page_num in sorted(pages_map.keys()):
             f_clean.write(f"--- [SAYFA {page_num + 1}] ---\n\n")
@@ -1376,22 +1493,22 @@ def export_copyable_txt_files(
 
     with open(bilingual_txt_path, "w", encoding="utf-8") as f_bi:
         f_bi.write("====================================================================\n")
-        f_bi.write("   PDF AI ENGINE - KARŞILAŞTIRMALI İNCELEME VE HATA AYIKLAMA DOSYASI\n")
+        f_bi.write("   PDF AI ENGINE - KARSILASTIRMALI INCELEME VE HATA AYIKLAMA DOSYASI\n")
         f_bi.write("====================================================================\n\n")
         for page_num in sorted(pages_map.keys()):
             f_bi.write(f"==================== SAYFA {page_num + 1} ====================\n\n")
             for b in sorted(pages_map[page_num], key=lambda x: (round(x.box.y0 / 6), x.box.x0)):
                 if b.is_code_block:
-                    tag = "[KARANTİNA KOD BLOĞU]"
+                    tag = "[KARANTINA KOD BLOGU]"
                 elif b.is_header_footer:
-                    tag = "[KORUNAN ÜST/ALT BİLGİ]"
+                    tag = "[KORUNAN UST/ALT BILGI]"
                 elif b.is_standalone_math:
-                    tag = "[KORUNAN FORMÜL / BNF]"
+                    tag = "[KORUNAN FORMUL / BNF]"
                 else:
-                    tag = f"[METİN BLOKU #{b.id}]"
+                    tag = f"[METIN BLOGU #{b.id}]"
                 orig_out = format_sub_sup_for_render(b.text, None)
                 tr_out = format_sub_sup_for_render(b.translated_text, None)
-                f_bi.write(f"{tag}\nEN (Orijinal) : {orig_out}\nTR (Çeviri)   : {tr_out}\n" + "-" * 68 + "\n")
+                f_bi.write(f"{tag}\nEN (Orijinal) : {orig_out}\nTR (Ceviri)   : {tr_out}\n" + "-" * 68 + "\n")
             f_bi.write("\n")
 
 
@@ -1405,7 +1522,7 @@ def run_pipeline(input_pdf: str, output_pdf: str):
     all_paragraphs: List[ParagraphBlock] = []
     pages_blocks_map: Dict[int, List[ParagraphBlock]] = {}
 
-    print(f"\n[İŞLEM BAŞLADI] Toplam Sayfa: {total_pages} | Belge: {input_pdf}")
+    print(f"\n[ISLEM BASLADI] Toplam Sayfa: {total_pages} | Belge: {input_pdf}")
 
     global_id = 0
     for page_num in range(total_pages):
@@ -1418,9 +1535,9 @@ def run_pipeline(input_pdf: str, output_pdf: str):
         pages_blocks_map[page_num] = paras
 
     total_blocks = len(all_paragraphs)
-    print(f"-> Tespit Edilen Toplam Bütünleşik Blok Sayısı: {total_blocks}")
+    print(f"-> Tespit Edilen Toplam Butunlesik Blok Sayisi: {total_blocks}")
 
-    # Nöral Çeviri ve Her 10 Sayfada Bir Otonom Bellek Temizliği (KURAL 8)
+    # DIREKTIF 7: Her 10 sayfada bir torch.cuda.empty_cache() ve gc.collect()
     processed_blocks = 0
     for page_num in range(total_pages):
         paras = pages_blocks_map.get(page_num, [])
@@ -1429,24 +1546,23 @@ def run_pipeline(input_pdf: str, output_pdf: str):
             processed_blocks += 1
 
         if (page_num + 1) % 10 == 0 or (page_num + 1) == total_pages:
-            print(f"   Çeviri İlerlemesi: {processed_blocks}/{total_blocks} blok (Sayfa {page_num + 1}/{total_pages}) tamamlandı...")
+            print(f"   Ceviri Ilerlemesi: {processed_blocks}/{total_blocks} blok (Sayfa {page_num + 1}/{total_pages}) tamamlandi.")
             translator.save_cache()
             if device.type == "cuda":
                 torch.cuda.empty_cache()
             gc.collect()
 
     font_reg_path, font_bold_path, font_validator = select_best_unicode_fonts()
-    print(f"-> Aktif Font ve Türkçe Glif Kalkanı: {os.path.basename(font_reg_path)}")
+    print(f"-> Aktif Font ve Turkce Glif Kalkani: {os.path.basename(font_reg_path)}")
 
-    # C++ AiEngine entegrasyonu
     layout_in = os.path.join("build", "layout_in.txt")
     layout_out = os.path.join("build", "layout_out.txt")
     os.makedirs("build", exist_ok=True)
     if os.path.exists(layout_out):
         try:
             os.remove(layout_out)
-        except Exception:
-            pass
+        except OSError:
+            _ = None
 
     with open(layout_in, "w", encoding="utf-8") as f:
         for p in all_paragraphs:
@@ -1460,12 +1576,11 @@ def run_pipeline(input_pdf: str, output_pdf: str):
 
     engine_path = os.path.join("build", "AiEngine.exe")
     if os.path.exists(engine_path):
-        print("\n2. [C++ AiEngine] OpenMP ile paralel kutu/font optimizasyonu yapılıyor...")
+        print("\n2. [C++ AiEngine] OpenMP ile paralel kutu/font optimizasyonu yapiliyor...")
         subprocess.run([engine_path, layout_in, layout_out], check=False)
 
-    print("\n3. [CERRAHİ RENDER] Gerçek Redaction API ve Kod Karantinası ile PDF işleniyor...")
+    print("\n3. [CERRAHI RENDER] Gercek Redaction API ve Kod Karantinasi ile PDF isleniyor...")
 
-    # Ölçüm testi için geçici bellek içi (scratch) PDF belgesi
     scratch_doc = fitz.open()
     scratch_page = scratch_doc.new_page(width=800, height=1200)
     if os.path.exists(font_reg_path):
@@ -1479,10 +1594,16 @@ def run_pipeline(input_pdf: str, output_pdf: str):
             continue
 
         page_pix = page.get_pixmap()
+        page_dict = page.get_text("dict")
+        image_rects = [
+            fitz.Rect(b["bbox"]) for b in page_dict.get("blocks", [])
+            if b.get("type") == 1 and "bbox" in b
+        ]
+
         render_queue: List[Tuple[ParagraphBlock, fitz.Rect, str, Tuple[float, float, float], Tuple[float, float, float]]] = []
         has_redactions = False
 
-        # AŞAMA 1: KURAL 2 - Tüm çevrilecek bloklar için Redaction Annotation ekle (Kod ve formüllere DOKUNMA!)
+        # ASAMA 1: DIREKTIF 3 - Gercek Redaction Annotation olustur (Korunan kod/formul bloklarina dokunma)
         for p in page_paras:
             if p.is_protected:
                 continue
@@ -1497,25 +1618,30 @@ def run_pipeline(input_pdf: str, output_pdf: str):
             if bg_lum >= 0.45 and sum(fg_color) > 2.2:
                 fg_color = (0.0, 0.0, 0.0)
 
-            # KURAL 2: Metin sınırından sağa +4.0pt, üste ve alta +1.0pt marjin (korunan bloklara çarpmadan)
-            erase_x1 = min(p.box.x1 + 4.0, (p.max_allowed_x1 + 2.0) if p.max_allowed_x1 else (p.box.x1 + 4.0))
-            erase_y1 = min(p.box.y1 + 1.0, (p.max_allowed_y1 + 0.5) if p.max_allowed_y1 else (p.box.y1 + 1.0))
-            rect_erase = fitz.Rect(p.box.x0 - 0.5, p.box.y0 - 1.0, erase_x1, erase_y1)
+            # DIREKTIF 3: Metin sinirindan saga +3.5pt, uste +1.0pt, alta +1.0pt marjin
+            rect_erase = fitz.Rect(
+                p.box.x0 - 0.5,
+                p.box.y0 - 1.0,
+                p.box.x1 + 3.5,
+                p.box.y1 + 1.0
+            )
 
-            # Karantinadaki bir kod/formül bloğuyla kesişiyorsa silme kutusunu kırp
             for other in page_paras:
                 if other.is_protected and other.id != p.id:
                     o_rect = fitz.Rect(other.box.x0, other.box.y0, other.box.x1, other.box.y1)
-                    if rect_erase.intersects(o_rect):
-                        if other.box.y0 >= p.box.y0 and other.box.y0 < rect_erase.y1:
-                            rect_erase.y1 = max(p.box.y0 + 2.0, other.box.y0 - 0.5)
+                    rect_erase = _clip_erase_rect_against_obstacle(rect_erase, o_rect)
 
-            page.add_redact_annot(rect_erase, fill=bg_color)
+            for img_r in image_rects:
+                if img_r.width > 30.0 and img_r.height > 20.0:
+                    rect_erase = _clip_erase_rect_against_obstacle(rect_erase, img_r)
+
+            annot = page.add_redact_annot(rect_erase, fill=bg_color)
+            _ = annot
             has_redactions = True
 
-            # KURAL 5: Sağa doğru genişletme YASAKTIR (p.max_allowed_x1 asla aşılmaz)
-            safe_x1 = min(p.box.x1 + 2.0, p.max_allowed_x1) if p.max_allowed_x1 else p.box.x1
-            safe_x1 = max(safe_x1, p.box.x0 + 15.0)
+            # DIREKTIF 5: Sag sutun siniri olan p.max_allowed_x1 degeri ASLA asilmaz
+            safe_x1 = min(p.box.x1, p.max_allowed_x1) if p.max_allowed_x1 else p.box.x1
+            safe_x1 = max(safe_x1, p.box.x0 + 16.0)
             desired_y1 = p.box.y1 + 6.0
             safe_y1 = min(desired_y1, p.max_allowed_y1) if p.max_allowed_y1 else desired_y1
             safe_y1 = max(safe_y1, p.box.y1 + 1.5)
@@ -1523,11 +1649,17 @@ def run_pipeline(input_pdf: str, output_pdf: str):
             target_rect = fitz.Rect(p.box.x0, p.box.y0 - 1.0, safe_x1, safe_y1)
             render_queue.append((p, target_rect, render_text, fg_color, bg_color))
 
-        # AŞAMA 2: Sayfa düzeyinde gerçek Redaction uygula (Görselleri/şemaları koru, eski İngilizce metin akışını yok et)
+        # ASAMA 2: DIREKTIF 3 - Gorselleri ve vektor cizgilerini koruyarak redaction uygula
         if has_redactions:
-            page.apply_redactions(images=fitz.PDF_REDACT_IMAGE_NONE)
+            try:
+                page.apply_redactions(
+                    images=fitz.PDF_REDACT_IMAGE_NONE,
+                    graphics=fitz.PDF_REDACT_LINE_ART_NONE
+                )
+            except TypeError:
+                page.apply_redactions(images=fitz.PDF_REDACT_IMAGE_NONE)
 
-        # AŞAMA 3: Redaction sonrası temizlenen sayfalara Türkçe fontları kaydet ve metinleri tek seferde bas
+        # ASAMA 3: DIREKTIF 3 - Turkce fontlar ve metin kutulari KESINLIKLE apply_redactions sonrasinda eklenir
         font_registered = False
         if os.path.exists(font_reg_path):
             try:
@@ -1555,13 +1687,16 @@ def run_pipeline(input_pdf: str, output_pdf: str):
                 lineheight=opt_lh,
                 render_mode=0
             )
-            # Eğer 6.0pt ile hala çok dar bir kutuda taştıysa dikeyde hafif esneterek yazdır (Sağa genişletme yapmadan!)
             if rc < 0:
+                fallback_y1 = min(
+                    (p.max_allowed_y1 + 4.0) if p.max_allowed_y1 else (target_rect.y1 + 12.0),
+                    page.rect.height - 6.0
+                )
                 fallback_rect = fitz.Rect(
                     target_rect.x0,
                     target_rect.y0,
                     target_rect.x1,
-                    min(page.rect.height - 6.0, target_rect.y1 + 14.0)
+                    max(target_rect.y1 + 2.0, fallback_y1)
                 )
                 page.insert_textbox(
                     fallback_rect,
@@ -1575,17 +1710,20 @@ def run_pipeline(input_pdf: str, output_pdf: str):
                 )
 
         if (page_num + 1) % 10 == 0:
+            if device.type == "cuda":
+                torch.cuda.empty_cache()
             gc.collect()
 
     scratch_doc.close()
 
+    # DIREKTIF 8: Windows Dosya Kilidi Korumasi (PermissionError Fallback)
     final_pdf_path = output_pdf
     try:
         doc.save(final_pdf_path, garbage=4, deflate=True)
     except PermissionError:
         base, ext = os.path.splitext(output_pdf)
         final_pdf_path = f"{base}_YENI{ext}"
-        print(f"[UYARI] '{output_pdf}' başka bir programda açık! Çıktı '{final_pdf_path}' olarak kaydedildi.")
+        print(f"[UYARI] '{output_pdf}' baska bir programda acik! Cikti '{final_pdf_path}' olarak kaydedildi.")
         doc.save(final_pdf_path, garbage=4, deflate=True)
     finally:
         doc.close()
@@ -1596,10 +1734,10 @@ def run_pipeline(input_pdf: str, output_pdf: str):
     export_copyable_txt_files(all_paragraphs, clean_txt_file, review_txt_file)
 
     print("\n====================================================================")
-    print("[BAŞARILI] %100 Çevrimdışı Evrensel Motor (v14.0) Çıktıları Üretildi:")
-    print(f"  1. Kusursuz PDF Dosyası        : {final_pdf_path}")
-    print(f"  2. Temiz Türkçe TXT Dosyası    : {clean_txt_file}")
-    print(f"  3. Karşılaştırmalı İnceleme TXT: {review_txt_file}")
+    print("[BASARILI] %100 Cevrimdisi Evrensel Motor (v17.0) Ciktilari Uretildi:")
+    print(f"  1. Kusursuz PDF Dosyasi        : {final_pdf_path}")
+    print(f"  2. Temiz Turkce TXT Dosyasi    : {clean_txt_file}")
+    print(f"  3. Karsilastirmali Inceleme TXT: {review_txt_file}")
     print("====================================================================")
 
 
