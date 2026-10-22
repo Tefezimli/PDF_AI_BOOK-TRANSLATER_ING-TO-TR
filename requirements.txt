@@ -2,6 +2,8 @@ torch>=2.0.0
 torchvision
 transformers>=4.40.0
 sentencepiece
+sacremoses
+accelerate>=0.26.0
 pymupdf>=1.24.0
 pillow>=10.0.0
 opencv-python>=4.8.0
