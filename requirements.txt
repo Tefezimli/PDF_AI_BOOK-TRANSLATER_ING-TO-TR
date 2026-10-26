@@ -4,5 +4,5 @@ transformers>=4.40.0
 sentencepiece>=0.2.0
 opencv-python>=4.9.0
 pillow>=10.0.0
-pytesseract>=0.3.10
+pytesseract>=0.3.13
 numpy>=1.26.0
