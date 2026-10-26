@@ -39,10 +39,10 @@ if !errorlevel! neq 0 (
         echo.
         pause
     ) else (
-        echo -> İnternet bağlantısı aktif.
+        echo -^> İnternet bağlantısı aktif.
     )
 ) else (
-    echo -> İnternet bağlantısı aktif.
+    echo -^> İnternet bağlantısı aktif.
 )
 echo.
 
@@ -108,8 +108,8 @@ for %%D in (
 :: 1.5 Eğer sistemde sadece Python 3.9 veya altı varsa ya da hiç yoksa Winget ile kur
 color 0E
 echo [UYARI] Sistemde modern yapay zeka kütüphaneleriyle uyumlu Python (3.10+) bulunamadı.
-echo -> (Not: Eski Python 3.9 sürümleri PyMuPDF/Surya-OCR/Torch ile kütüphane çakışması yaratır).
-echo -> Python 3.11 Winget üzerinden otomatik kuruluyor, lütfen bekleyin...
+echo -^> (Not: Eski Python 3.9 sürümleri PyMuPDF/Surya-OCR/Torch ile kütüphane çakışması yaratır).
+echo -^> Python 3.11 Winget üzerinden otomatik kuruluyor, lütfen bekleyin...
 echo.
 
 where winget >nul 2>&1
@@ -135,7 +135,7 @@ pause
 exit /b 1
 
 :PYTHON_BULUNDU
-echo -> Python bulundu: "!PYTHON_EXE!"
+echo -^> Python bulundu: "!PYTHON_EXE!"
 "!PYTHON_EXE!" --version
 echo.
 
@@ -150,13 +150,13 @@ if exist "!VENV_PY!" (
     "!VENV_PY!" -c "import sys; assert sys.version_info >= (3, 10)" >nul 2>&1
     if !errorlevel! neq 0 (
         echo [ONARIM] Mevcut sanal ortam başka bir bilgisayardan kopyalanmış veya eski Python sürümüne ait.
-        echo -> Sanal ortam sıfırlanıp yeniden inşa ediliyor...
+        echo -^> Sanal ortam sıfırlanıp yeniden inşa ediliyor...
         rmdir /s /q "!VENV_DIR!"
     )
 )
 
 if not exist "!VENV_PY!" (
-    echo -> Yeni sanal ortam oluşturuluyor: "!VENV_DIR!"
+    echo -^> Yeni sanal ortam oluşturuluyor: "!VENV_DIR!"
     "!PYTHON_EXE!" -m venv "!VENV_DIR!"
     if !errorlevel! neq 0 (
         color 0C
@@ -165,7 +165,7 @@ if not exist "!VENV_PY!" (
         exit /b 1
     )
 )
-echo -> Sanal ortam hazır.
+echo -^> Sanal ortam hazır.
 echo.
 
 :: ----------------------------------------------------------------------------
@@ -185,39 +185,39 @@ if "!HAS_NVIDIA!"=="0" (
 
 set "TORCH_OK=0"
 if "!HAS_NVIDIA!"=="1" (
-    echo -> NVIDIA Ekran Kartı tespit edildi. CUDA hızlandırmalı PyTorch yapılandırılıyor...
+    echo -^> NVIDIA Ekran Kartı tespit edildi. CUDA hızlandırmalı PyTorch yapılandırılıyor...
     
-    echo -> [1/3] Blackwell (RTX 50xx / cu128 nightly) deneniyor...
+    echo -^> [1/3] Blackwell ^(RTX 50xx / cu128 nightly^) deneniyor...
     "!VENV_PY!" -m pip install --pre torch torchvision --index-url https://download.pytorch.org/whl/nightly/cu128
     "!VENV_PY!" -c "import torch; assert torch.cuda.is_available()" >nul 2>&1
     if !errorlevel! equ 0 (
         set "TORCH_OK=1"
-        echo -> CUDA 12.8 nightly başarıyla kuruldu ve doğrulandı.
+        echo -^> CUDA 12.8 nightly başarıyla kuruldu ve doğrulandı.
     )
 
     if "!TORCH_OK!"=="0" (
-        echo -> [2/3] Kararlı CUDA 12.4 (RTX 30xx / 40xx) kuruluyor...
+        echo -^> [2/3] Kararlı CUDA 12.4 ^(RTX 30xx / 40xx^) kuruluyor...
         "!VENV_PY!" -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124
         "!VENV_PY!" -c "import torch; assert torch.cuda.is_available()" >nul 2>&1
         if !errorlevel! equ 0 (
             set "TORCH_OK=1"
-            echo -> CUDA 12.4 başarıyla kuruldu ve doğrulandı.
+            echo -^> CUDA 12.4 başarıyla kuruldu ve doğrulandı.
         )
     )
 
     if "!TORCH_OK!"=="0" (
-        echo -> [3/3] Kararlı CUDA 12.1 kuruluyor...
+        echo -^> [3/3] Kararlı CUDA 12.1 kuruluyor...
         "!VENV_PY!" -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
         "!VENV_PY!" -c "import torch; assert torch.cuda.is_available()" >nul 2>&1
         if !errorlevel! equ 0 (
             set "TORCH_OK=1"
-            echo -> CUDA 12.1 başarıyla kuruldu ve doğrulandı.
+            echo -^> CUDA 12.1 başarıyla kuruldu ve doğrulandı.
         )
     )
 )
 
 if "!TORCH_OK!"=="0" (
-    echo -> Standart kararlı PyTorch (CPU) kuruluyor...
+    echo -^> Standart kararlı PyTorch ^(CPU^) kuruluyor...
     "!VENV_PY!" -m pip install torch torchvision
 )
 echo.
@@ -227,13 +227,13 @@ echo.
 :: ----------------------------------------------------------------------------
 echo [4/6] NLP, PDF, OCR ve Derin Öğrenme kütüphaneleri kuruluyor...
 
-echo -> [Grup 1] Çekirdek NLP ve Çeviri Bağımlılıkları (transformers, sacremoses, sentencepiece)...
+echo -^> [Grup 1] Çekirdek NLP ve Çeviri Bağımlılıkları (transformers, sacremoses, sentencepiece)...
 "!VENV_PY!" -m pip install transformers>=4.40.0 sentencepiece sacremoses accelerate huggingface_hub safetensors requests tqdm
 
-echo -> [Grup 2] PDF ve Görsel İşleme Motorları (pymupdf, pillow, opencv-python, pytesseract)...
+echo -^> [Grup 2] PDF ve Görsel İşleme Motorları (pymupdf, pillow, opencv-python, pytesseract)...
 "!VENV_PY!" -m pip install pymupdf>=1.24.0 pillow>=10.0.0 opencv-python>=4.8.0 pytesseract>=0.3.10 numpy>=1.24.0 pypdfium2
 
-echo -> [Grup 3] Opsiyonel Derin Öğrenme OCR Paketleri (surya-ocr, ultralytics)...
+echo -^> [Grup 3] Opsiyonel Derin Öğrenme OCR Paketleri (surya-ocr, ultralytics)...
 "!VENV_PY!" -m pip install surya-ocr ultralytics >nul 2>&1
 echo.
 
@@ -254,7 +254,7 @@ if not defined TESS_DIR (
 )
 
 if not defined TESS_DIR (
-    echo -> Tesseract OCR bulunamadı. Winget ile kuruluyor...
+    echo -^> Tesseract OCR bulunamadı. Winget ile kuruluyor...
     where winget >nul 2>&1
     if !errorlevel! equ 0 (
         winget install -e --id UB-Mannheim.TesseractOCR --accept-package-agreements --accept-source-agreements
@@ -264,14 +264,14 @@ if not defined TESS_DIR (
 )
 
 if defined TESS_DIR (
-    echo -> Tesseract OCR hazır: "!TESS_DIR!"
+    echo -^> Tesseract OCR hazır: "!TESS_DIR!"
     if exist "!TESS_DIR!\tessdata" (
         if not exist "!TESS_DIR!\tessdata\tur.traineddata" (
-            echo -> Türkçe OCR dil paketi (tur.traineddata) indiriliyor...
+            echo -^> Türkçe OCR dil paketi ^(tur.traineddata^) indiriliyor...
             "!VENV_PY!" -c "import urllib.request, os; p=r'!TESS_DIR!\tessdata\tur.traineddata'; urllib.request.urlretrieve('https://github.com/tesseract-ocr/tessdata_fast/raw/main/tur.traineddata', p) if not os.path.exists(p) else None" >nul 2>&1
         )
         if not exist "!TESS_DIR!\tessdata\eng.traineddata" (
-            echo -> İngilizce OCR dil paketi (eng.traineddata) indiriliyor...
+            echo -^> İngilizce OCR dil paketi ^(eng.traineddata^) indiriliyor...
             "!VENV_PY!" -c "import urllib.request, os; p=r'!TESS_DIR!\tessdata\eng.traineddata'; urllib.request.urlretrieve('https://github.com/tesseract-ocr/tessdata_fast/raw/main/eng.traineddata', p) if not os.path.exists(p) else None" >nul 2>&1
         )
     )
@@ -282,7 +282,7 @@ echo.
 :: 6. ADIM: Çeviri Modelinin İndirilmesi ve %100 Çevrimdışı Kilit Doğrulaması
 :: ----------------------------------------------------------------------------
 echo [6/6] Yapay Zeka Çeviri Modeli (Helsinki-NLP/opus-mt-tc-big-en-tr) indiriliyor...
-echo -> Model ağırlıkları HuggingFace üzerinden yerel önbelleğe alınıyor...
+echo -^> Model ağırlıkları HuggingFace üzerinden yerel önbelleğe alınıyor...
 
 "!VENV_PY!" -c "import os; os.environ['HF_HUB_OFFLINE']='0'; os.environ['TRANSFORMERS_OFFLINE']='0'; from transformers import AutoTokenizer, AutoModelForSeq2SeqLM; m='Helsinki-NLP/opus-mt-tc-big-en-tr'; print('-> Tokenizer indiriliyor...'); AutoTokenizer.from_pretrained(m); print('-> Model ağırlıkları indiriliyor (~1.2 GB)...'); AutoModelForSeq2SeqLM.from_pretrained(m); print('[OK] Model başarıyla yerel diske kaydedildi.')"
 
@@ -292,7 +292,7 @@ if !errorlevel! neq 0 (
 )
 
 :: Modelin %100 Çevrimdışı (Air-Gapped) Çalıştığını Kesin Olarak Test Et
-echo -> Çevrimdışı (internetsiz) çalışma testi yapılıyor...
+echo -^> Çevrimdışı (internetsiz) çalışma testi yapılıyor...
 "!VENV_PY!" -c "import os; os.environ['HF_HUB_OFFLINE']='1'; os.environ['TRANSFORMERS_OFFLINE']='1'; from transformers import AutoTokenizer, AutoModelForSeq2SeqLM; m='Helsinki-NLP/opus-mt-tc-big-en-tr'; tok=AutoTokenizer.from_pretrained(m, local_files_only=True); mod=AutoModelForSeq2SeqLM.from_pretrained(m, local_files_only=True); print('-> %100 ÇEVRİMDIŞI KİLİT ONAYLANDI: Model internetsiz çalışmaya hazır.')"
 
 if !errorlevel! neq 0 (

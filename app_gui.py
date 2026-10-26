@@ -605,7 +605,7 @@ class EnterpriseTranslatorStudio:
             self.root.after(0, self._on_pipeline_complete, out_p)
         except Exception as e:
             print(f"\n[KRİTİK HATA] {e}\n")
-            self.root.after(0, lambda: messagebox.showerror("İşlem Hatası", str(e)))
+            self.root.after(0, lambda err_msg=str(e): messagebox.showerror("İşlem Hatası", err_msg))
         finally:
             self.root.after(0, self._unlock_ui)
 

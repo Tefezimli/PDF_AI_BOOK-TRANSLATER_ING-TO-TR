@@ -1,63 +1,29 @@
-# Python Virtual Environment
+# Sanal ortam ve derleme çıktıları
 ai_env/
 venv/
-env/
 .venv/
-
-# Build artifacts & C++ outputs
-build/
-out/
-bin/
-obj/
-*.exe
-*.dll
-*.so
-*.dylib
-*.pdb
-*.ilk
-*.lib
-*.a
-*.o
-*.obj
-
-# Model weights & large binaries (Exceeds GitHub limits or generated at runtime)
-*.bin
-*.pt
-*.pth
-*.onnx
-*.safetensors
-
-# IDE & Editor files
-.vs/
-.vscode/
-*.user
-*.suo
-CMakeSettings.json
-CMakeUserPresets.json
-
-# Python cache & build
 __pycache__/
 *.py[cod]
-*$py.class
-*.egg-info/
-dist/
+build/
+out/
 
-# Intermediate runtime text dumps & logs
-*.log
-layout_in.txt
-layout_out.txt
+# IDE & Editor Dosyaları
+.vs/
+.vscode/
 
-# PDF documents (sample, input, and output documents)
+# Büyük Model Ağırlıkları (GitHub 100MB Limiti)
+*.gguf
+*.bin
+*.safetensors
+*.pt
+*.onnx
+models/
+
+# PDF ve TXT test çıktıları
 *.pdf
+*.txt
+!requirements.txt
 
-# Generated translation outputs (Clean & Bilingual TXT dumps)
-cevirilmis_belge_*
-*_INCELEME.txt
-*_ULTIMATE.txt
-
-# OS & Editor artifacts
-.DS_Store
-Thumbs.db
-.idea/
-*.tmp
-*.bak
+# Hata ayıklama ve geçici dosyalar
+hata ayıklama klasörü/
+*.log
