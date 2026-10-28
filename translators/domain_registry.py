@@ -106,10 +106,12 @@ ENGLISH_PRE_NORMALIZATION = [
 # Çeviri Sonrası (Post-Translation) Kesin Onarım ve Gaf Temizleme Kuralları
 POST_TRANSLATION_FIXES = [
     # 0. Süslü parantez ve bozuk sembol kalıntıları
+    # Not: @ kuralları yalnızca boşluklu kalıntılara dokunur; e-posta adresleri
+    # (user@example.com) korunur.
     (r'[\ufd3e\u27e6]', '('),
     (r'[\ufd3f\u27e7]', ')'),
-    (r'(\w)\s*@\s*(\w)', r'\1-\2'),
-    (r'@', ''),
+    (r'(\w)\s+@\s+(\w)', r'\1-\2'),
+    (r'(?<=\s)@|@(?:\s|$)', ''),
     (r'\b([0-9a-zA-Z]+)\s*>\s*s\b', r"\1'e"),
     (r'!=', '\u2260'),
 

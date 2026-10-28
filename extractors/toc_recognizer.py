@@ -13,7 +13,13 @@ class SpatialTOCRecognizer:
     """
     LEADER_DOTS_RE = re.compile(r'(?:\.\s*){3,}|_{3,}|-{3,}')
     PURE_DOTS_RE = re.compile(r'^[\.\s_\-]+$')
-    PAGE_NUM_RE = re.compile(r'^(?:[ivxlcdmIVXLCDM]+|\d{1,4}(?:[\-\.]\d{1,3})?)$')
+    # Katı Roma rakamı deseni: "civil"/"mild" gibi kelimeleri sayfa no sanmaz,
+    # gerçek roma rakamlarını (xiii, xviii...) kabul eder.
+    ROMAN_NUMERAL_RE = r'(?=[ivxlcdm])m{0,4}(?:cm|cd|d?c{0,3})(?:xc|xl|l?x{0,3})(?:ix|iv|v?i{0,3})'
+    PAGE_NUM_RE = re.compile(
+        r'^(?:' + ROMAN_NUMERAL_RE + r'|\d{1,4}(?:[\-\.]\d{1,3})?)$',
+        re.I
+    )
     SECTION_PREFIX_RE = re.compile(r'^(?:Chapter\s+\d+|Part\s+[IVX\d]+|Appendix\s+[A-Z]|\d+\.\d+(?:\.\d+)?)\b', re.I)
 
     @classmethod
