@@ -4,8 +4,9 @@ from core.models import BoundingBox
 from core.unicode_sanitizer import normalize_unicode_text
 
 MONOSPACE_FONT_KEYWORDS = (
-    "mono", "courier", "consolas", "inconsolata", "menlo",
-    "source", "typewriter", "code", "cmtt", "lucida console",
+    "courier", "consolas", "inconsolata", "menlo",
+    "source code", "sourcecode", "fira code", "firacode",
+    "cascadia", "typewriter", "cmtt", "lucida console",
     "dejavusansmono", "liberationsansmono", "txtt", "zi4"
 )
 
@@ -270,7 +271,11 @@ class FormalismAnalyzer:
     def is_monospace_span(font_name: str, flags: int) -> bool:
         if (flags & 8) != 0:
             return True
-        fn = font_name.lower()
+        fn = font_name.lower().replace("unicode", "")
+        if "mono" in fn and "monotype" not in fn:
+            return True
+        if "code" in fn and not any(x in fn for x in ("unicode", "encode", "barcode")):
+            return True
         return any(k in fn for k in MONOSPACE_FONT_KEYWORDS)
 
     @staticmethod
