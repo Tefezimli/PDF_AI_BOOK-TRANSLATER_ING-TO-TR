@@ -84,3 +84,72 @@ def test_model_fallback_first_when_no_preference(monkeypatch):
     monkeypatch.setattr(lsb.urllib.request, "urlopen", lambda req, timeout=None: _FakeResponse())
     backend = LMStudioBackend(base_url=DEAD_SERVER_URL)
     assert backend.model_id == "mistral-7b-instruct"
+
+
+class _FakeChatResponse:
+    """sahte /chat/completions yanıtı; urlopen çağrılarını da sayar"""
+
+    def __init__(self, content: str, finish_reason: str = "stop"):
+        self._payload = {
+            "choices": [{"message": {"content": content}, "finish_reason": finish_reason}]
+        }
+        self.calls = 0
+
+    def __call__(self, req, timeout=None):
+        self.calls += 1
+        return self
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        return False
+
+    def read(self):
+        return json.dumps(self._payload).encode("utf-8")
+
+
+def test_length_finish_reason_means_truncated_and_returns_none(monkeypatch):
+    # içerik dolu olsa bile finish_reason=length KESİK demektir: değer döndürülmez,
+    # denemeler tükenince None + available=False + yedek uyarısı
+    backend = LMStudioBackend(base_url=DEAD_SERVER_URL, max_attempts=3)
+    fake = _FakeChatResponse("kesilmis yarim ceviri", finish_reason="length")
+    monkeypatch.setattr(lsb.urllib.request, "urlopen", fake)
+    backend.available = True
+    backend.model_id = "test-model"
+    assert backend.translate_masked_text("uzun bir paragraf metni") is None
+    assert fake.calls == 3  # kesik yanıt denemeye devam ettirdi, değilse kabul etmedi
+    assert backend.available is False
+
+
+def test_stop_finish_reason_with_content_is_returned(monkeypatch):
+    fake = _FakeChatResponse("tam çeviri metni", finish_reason="stop")
+    monkeypatch.setattr(lsb.urllib.request, "urlopen", fake)
+    backend = LMStudioBackend(base_url=DEAD_SERVER_URL)
+    backend.available = True
+    backend.model_id = "test-model"
+    assert backend.translate_masked_text("merhaba") == "tam çeviri metni"
+    assert backend.available is True
+
+
+def test_max_tokens_scales_with_long_input(monkeypatch):
+    captured = {}
+
+    def fake_urlopen(req, timeout=None):
+        captured["payload"] = json.loads(req.data.decode("utf-8"))
+        return _FakeChatResponse("uzun ceviri", finish_reason="stop")
+
+    monkeypatch.setattr(lsb.urllib.request, "urlopen", fake_urlopen)
+    backend = LMStudioBackend(base_url=DEAD_SERVER_URL)
+    backend.available = True
+    backend.model_id = "test-model"
+
+    # kısa girdide alt sınır: 1024'ten küçük olamaz
+    backend.translate_masked_text("kısa metin")
+    assert captured["payload"]["max_tokens"] == 1024
+
+    # uzun girdide ölçeklenir: 1024'ten büyük, 4096 üst sınırını aşmaz
+    long_text = "kelime " * 800  # ~4800 karakter
+    backend.available = True
+    backend.translate_masked_text(long_text)
+    assert 1024 < captured["payload"]["max_tokens"] <= 4096

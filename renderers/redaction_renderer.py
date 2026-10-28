@@ -96,8 +96,13 @@ class RedactionPDFRenderer:
         scratch_doc = fitz.open()
         scratch_page = scratch_doc.new_page(width=800, height=1200)
         if os.path.exists(self.font_reg_path):
-            scratch_page.insert_font(fontname="math_tr", fontfile=self.font_reg_path)
-            scratch_page.insert_font(fontname="math_tr_b", fontfile=self.font_bold_path)
+            # Geçersiz font dosyası render başlamadan boru hattını çökertmesin;
+            # sayfa döngüsündeki insert_font zaten kendi try/except'inde helv'e düşüyor.
+            try:
+                scratch_page.insert_font(fontname="math_tr", fontfile=self.font_reg_path)
+                scratch_page.insert_font(fontname="math_tr_b", fontfile=self.font_bold_path)
+            except Exception:
+                pass
 
         for page_num in range(total_pages):
             page = doc[page_num]

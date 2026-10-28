@@ -16,9 +16,10 @@ We actively provide security updates and patches for the following versions:
 
 **PDF AI Engine** is designed from the ground up with a **strict offline security architecture**:
 
-1. **Zero External Network Calls:** The engine operates in a 100% air-gapped environment. No documents, plain text, extracted images, or telemetry are ever transmitted over the network.
+1. **No Network Calls After First-Run Model Download:** If the translation model (`Helsinki-NLP/opus-mt-tc-big-en-tr`) is not already in the local Hugging Face cache, it is downloaded from Hugging Face on the first run (`translators/marian_backend.py`, `HF_HUB_OFFLINE=0`, `local_files_only=False`). Every subsequent run is 100% offline — no documents, plain text, extracted images, or telemetry are ever transmitted over the network.
 2. **Local Model Execution:** All neural machine translation (MarianMT) and OCR processes run locally on the host's hardware (GPU / CPU).
-3. **Telemetry Lock:** Hugging Face telemetry and token checkers are explicitly disabled programmatically (`HF_HUB_OFFLINE=1`, `HF_HUB_DISABLE_TELEMETRY=1`).
+3. **LM Studio URL Caution:** The optional LM Studio integration sends document text to the address configured via the `PDF_AI_LMSTUDIO_URL` environment variable. If that URL points beyond localhost, document content leaves the machine. For air-gapped use, keep the LM Studio URL pointed at localhost.
+4. **Telemetry Lock:** Hugging Face telemetry and token checkers are explicitly disabled programmatically (`HF_HUB_OFFLINE=1`, `HF_HUB_DISABLE_TELEMETRY=1`).
 
 ---
 

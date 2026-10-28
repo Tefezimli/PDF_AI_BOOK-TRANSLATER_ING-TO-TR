@@ -121,11 +121,12 @@ class LMStudioBackend:
                 {"role": "user", "content": masked_text}
             ],
             "temperature": 0.1,
-            "max_tokens": 1024,
+            # Girdiye göre ölçekle: uzun paragrafta sabit 1024 token yanıtı ortadan keser.
+            "max_tokens": max(1024, min(4096, int(len(masked_text) * 0.6) + 256)),
             "stream": False
         }
 
-        last_error: Optional[Exception] = None
+        last_error: Optional[Exception | str] = None
         for _ in range(self.max_attempts):
             try:
                 req = urllib.request.Request(
@@ -136,9 +137,16 @@ class LMStudioBackend:
                 )
                 with urllib.request.urlopen(req, timeout=self.request_timeout) as resp:
                     result = json.loads(resp.read().decode("utf-8"))
-                    content = result["choices"][0]["message"]["content"].strip()
+                    choice = result["choices"][0]
+                    content = choice["message"]["content"].strip()
                     if content:
-                        return content
+                        finish = choice.get("finish_reason")
+                        if finish == "length":
+                            # İçerik dolu olsa bile uzunluk sınırında kesik demektir;
+                            # kesik metni geçerli sanma, denemeye devam et.
+                            last_error = "yanit uzunluk sinirinda kesildi (finish_reason=length)"
+                        else:
+                            return content
             except Exception as exc:
                 last_error = exc
 

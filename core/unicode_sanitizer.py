@@ -223,6 +223,19 @@ def select_best_unicode_fonts() -> Tuple[str, str, Optional[fitz.Font]]:
         try:
             f_env = fitz.Font(fontfile=env_reg)
             if all(f_env.has_glyph(cp) for cp in turkish_codepoints):
+                # Geçersiz bold font regular'ı bozmasın: dosya yoksa/açılamıyorsa veya
+                # Türkçe glifleri eksikse sessizce regular'a düş (uyarı bir kez verilir).
+                if env_bold != env_reg:
+                    bold_valid = os.path.exists(env_bold)
+                    if bold_valid:
+                        try:
+                            f_bold = fitz.Font(fontfile=env_bold)
+                            bold_valid = all(f_bold.has_glyph(cp) for cp in turkish_codepoints)
+                        except Exception:
+                            bold_valid = False
+                    if not bold_valid:
+                        print("[UYARI] PDF_AI_FONT_BOLD gecersiz veya Turkce glifleri eksik; regular font kullanilacak.")
+                        env_bold = env_reg
                 return env_reg, env_bold, f_env
         except Exception:
             pass

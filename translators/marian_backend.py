@@ -91,7 +91,12 @@ class UniversalTranslationEngine:
             block.is_standalone_math = True
             return block.text
 
-        cached_val = self.cache.get(clean_raw)
+        # Motor-etiketli anahtar: Opus-MT ile yapılmış çeviriler, LM Studio açılınca
+        # kalıcı olarak cache'ten gelmesin. Tag her blokta o anki duruma göre belirlenir
+        # (yedek geçişinde available False'a düşebilir).
+        engine_tag = "llm" if self.lmstudio.available else "opus"
+        cache_key = f"{engine_tag}|{clean_raw}"
+        cached_val = self.cache.get(cache_key)
         if cached_val is not None:
             return cached_val
 
@@ -109,7 +114,7 @@ class UniversalTranslationEngine:
                 restored = DeterministicArtifactPurger.sanitize_stream(restored)
                 result = ("\u2022 " if has_bullet else "") + restored
                 result = re.sub(r'\s+', ' ', result).strip()
-                self.cache.put(clean_raw, result)
+                self.cache.put(cache_key, result)
                 return result
 
         # YÖNTEM B: Helsinki-NLP Opus-MT (Cümle bazlı hızlı nöral çeviri)
@@ -169,5 +174,5 @@ class UniversalTranslationEngine:
 
         result = ("\u2022 " if has_bullet else "") + " ".join(final_sents)
         result = re.sub(r'\s+', ' ', result).strip()
-        self.cache.put(clean_raw, result)
+        self.cache.put(cache_key, result)
         return result

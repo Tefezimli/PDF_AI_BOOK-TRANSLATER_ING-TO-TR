@@ -418,7 +418,8 @@ class EnterpriseTranslatorStudio:
         tk.Label(parent,
                  text="Not: Ayarlar 'ÇEVİRİYİ BAŞLAT' ile otomatik uygulanır ve kaydedilir.\n"
                       "Sayfa aralığı seçiminde seçilmeyen sayfalar çıktıda orijinal İngilizce kalır;\n"
-                      "çıktı dosyası <ad>_p<aralik>_ULTIMATE.pdf olarak adlandırılır.",
+                      "çıktı dosyası GUI'de <ad>_TR.pdf olarak adlandırılır — _p<aralik>_ULTIMATE.pdf\n"
+                      "adlandırması yalnızca CLI (pdfai-translate) içindir.",
                  font=("Segoe UI", 8), fg=TEXT_MUTED, bg=BG_PANEL, justify=tk.LEFT
                  ).pack(anchor="w", padx=16, pady=(2, 10))
 

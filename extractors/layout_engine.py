@@ -25,6 +25,8 @@ class GeometricLayoutEngine:
     def __init__(self, allow_ocr: bool = True):
         # allow_ocr=False -> taranmış sayfalarda Tesseract OCR atlanır (hızlı taslak modu).
         self.allow_ocr = allow_ocr
+        # cv2 eksikse OCR atlanır; kullanıcıya iş başına yalnızca bir kez bildirilir.
+        self._cv2_warned = False
 
     def extract_paragraphs(self, page: fitz.Page, page_num: int) -> List[ParagraphBlock]:
         raw_text_blocks = page.get_text("blocks")
@@ -49,10 +51,17 @@ class GeometricLayoutEngine:
 
         final_blocks = list(digital_blocks)
         if not (has_selectable_text and final_blocks) and self.allow_ocr and HAS_TESSERACT:
-            ocr_blocks = self._extract_scanned_ocr(page, page_num, quarantined_blocks=digital_blocks)
-            if ocr_blocks:
-                print(f"   [TARANMIS SAYFA OCR] Sayfa {page_num + 1}: {len(ocr_blocks)} gorsel blok ayristirildi.")
-                final_blocks.extend(ocr_blocks)
+            if cv2 is None:
+                # cv2 yokluğu RuntimeError ile boru hattını kırmasın: OCR atlanır,
+                # kullanıcıya ilk taranmış sayfada bir kez bilgi verilir.
+                if not self._cv2_warned:
+                    print("[UYARI] OpenCV (cv2) kurulu degil; taranmis sayfalarin OCR'i atlandi (pip install opencv-python).")
+                    self._cv2_warned = True
+            else:
+                ocr_blocks = self._extract_scanned_ocr(page, page_num, quarantined_blocks=digital_blocks)
+                if ocr_blocks:
+                    print(f"   [TARANMIS SAYFA OCR] Sayfa {page_num + 1}: {len(ocr_blocks)} gorsel blok ayristirildi.")
+                    final_blocks.extend(ocr_blocks)
 
         for idx, b in enumerate(final_blocks):
             b.id = idx

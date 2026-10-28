@@ -44,3 +44,36 @@ def test_heals_known_terminology_gaffes_on_load(tmp_path):
 def test_cache_version_stamped(tmp_path):
     cache = make_cache(tmp_path)
     assert cache.data["__version__"] == CACHE_VERSION
+
+
+def test_save_is_atomic_crash_keeps_old_file(tmp_path, monkeypatch):
+    """Yazım ortasında çökme simülasyonu: yarım JSON eski dosyayı bozmamalı."""
+    import translators.cache_manager as cm
+
+    cache_file = tmp_path / "cache.json"
+    cache = SelfHealingCache(str(cache_file))
+    cache.put("anahtar", "eski ceviri")
+    assert cache.save()
+
+    def broken_dump(obj, fp, *args, **kwargs):
+        fp.write('{"yarim": ')  # floş anında çökme: yarım yaz
+        raise RuntimeError("crash")
+
+    monkeypatch.setattr(cm.json, "dump", broken_dump)
+    cache.put("yeni_anahtar", "kaydedilmemis")
+    assert cache.save() is False  # sessiz False davranışı korunur
+
+    # atomiklik kanıtı: eski dosya içeriği değişmemiş, yarımı yutmadı
+    reloaded = SelfHealingCache(str(cache_file))
+    assert reloaded.get("anahtar") == "eski ceviri"
+    assert reloaded.get("yeni_anahtar") is None
+    assert not (tmp_path / "cache.json.tmp").exists()  # tmp kalıntısı temizlenir
+
+
+def test_save_without_directory_component(tmp_path, monkeypatch):
+    """cache_path dizinsizse ("cache.json") os.makedirs("") FileNotFoundError atmamalı."""
+    monkeypatch.chdir(tmp_path)
+    cache = SelfHealingCache("cache.json")
+    cache.put("x", "y")
+    assert cache.save()
+    assert SelfHealingCache("cache.json").get("x") == "y"
