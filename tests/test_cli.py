@@ -1,4 +1,6 @@
 """pdf_bridge komut satırı arayüzü testleri (argparse katmanı + main())."""
+import pytest
+
 import pdf_bridge
 
 
@@ -78,3 +80,26 @@ def test_main_missing_input_returns_error_code(tmp_path, monkeypatch, capsys):
     rc = pdf_bridge.main([str(tmp_path / "yok.pdf")])
     assert rc == 1
     assert "bulunamadi" in capsys.readouterr().out
+
+
+def test_main_reports_runtime_error_cleanly(tmp_path, monkeypatch, capsys):
+    """Şifreli/bozuk PDF hataları CLI'da traceback yerine tek satır [HATA] olmalı."""
+    src = tmp_path / "kitap.pdf"
+    src.write_bytes(b"%PDF-1.4 test")
+
+    def boom(*a, **k):
+        raise RuntimeError("PDF sifreli/korumali; sifresiz bir kopya ile tekrar deneyin.")
+
+    monkeypatch.setattr(pdf_bridge, "run_pipeline", boom)
+    rc = pdf_bridge.main([str(src)])
+    assert rc == 1
+    out = capsys.readouterr().out
+    assert "[HATA]" in out
+    assert "sifresiz bir kopya" in out
+
+
+def test_open_input_document_rejects_corrupt_pdf(tmp_path):
+    bad = tmp_path / "bozuk.pdf"
+    bad.write_bytes(b"bu bir pdf degil")
+    with pytest.raises(RuntimeError, match="bozuk"):
+        pdf_bridge.open_input_document(str(bad))
