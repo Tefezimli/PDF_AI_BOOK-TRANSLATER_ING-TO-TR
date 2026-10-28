@@ -15,6 +15,7 @@ import torch
 
 # Mevcut çeviri motorumuzu hiçbir değişikliğe uğratmadan içeri aktarıyoruz
 import pdf_bridge
+from core.user_settings import apply_lmstudio_env, load_settings, save_settings
 
 # Windows High-DPI (Bulanık görüntü önleyici, 1080p/2K/4K keskinlik kilidi)
 try:
@@ -87,6 +88,7 @@ class EnterpriseTranslatorStudio:
         # İlerleme kaynağı: motor callback'i ilk olayı gönderince "callback"e döner;
         # o ana kadar konsol çıktısı kazıması (yedek kanal) yüzdeyi günceller.
         self._progress_source = "console"
+        self.settings = load_settings()
 
         self._configure_ttk_styles()
         self._build_layout()
@@ -152,7 +154,7 @@ class EnterpriseTranslatorStudio:
 
         tk.Label(
             brand_frame,
-            text="HYBRID C++17 OpenMP & NEURAL DLA WORKSTATION  •  v18.0 MASTER",
+            text="HYBRID C++17 OpenMP & NEURAL DLA WORKSTATION  •  v18.1 MASTER",
             font=("Consolas", 8, "bold"),
             fg=ACCENT_BLUE,
             bg=BG_PANEL
@@ -364,6 +366,78 @@ class EnterpriseTranslatorStudio:
         tab_review = tk.Frame(self.notebook, bg=BG_TERMINAL)
         self.notebook.add(tab_review, text="  🔍 EN ⇄ TR Akademik Karşılaştırma Stüdyosu  ")
         self.review_txt_view = self._create_studio_textbox(tab_review)
+
+        tab_settings = tk.Frame(self.notebook, bg=BG_PANEL)
+        self.notebook.add(tab_settings, text="  ⚙️ Çeviri Ayarları  ")
+        self._build_settings_tab(tab_settings)
+
+    def _build_settings_tab(self, parent: tk.Frame):
+        pad = {"padx": 16, "pady": (10, 4)}
+        tk.Label(parent, text="LM STUDIO (YEREL LLM)", font=("Segoe UI", 9, "bold"),
+                 fg=ACCENT_BLUE, bg=BG_PANEL).pack(anchor="w", **pad)
+
+        self.var_lm_url = tk.StringVar(value=str(self.settings.get("lmstudio_url", "")))
+        self.var_lm_port = tk.StringVar(value=str(self.settings.get("lmstudio_port", "1234")))
+        self.var_lm_model = tk.StringVar(value=str(self.settings.get("lmstudio_model", "")))
+
+        for label, var in [
+            ("Sunucu URL (boş = localhost:<port>/v1):", self.var_lm_url),
+            ("Port:", self.var_lm_port),
+            ("Model tercihi (boş = ilk yüklü model):", self.var_lm_model),
+        ]:
+            tk.Label(parent, text=label, font=("Segoe UI", 8), fg=TEXT_MUTED, bg=BG_PANEL).pack(anchor="w", padx=16)
+            tk.Entry(parent, textvariable=var, font=("Consolas", 9), bg=BG_CARD, fg=TEXT_PRIMARY,
+                     insertbackground="white", relief=tk.FLAT, width=44).pack(anchor="w", padx=16, pady=(2, 6))
+
+        tk.Label(parent, text="BORU HATTI", font=("Segoe UI", 9, "bold"),
+                 fg=ACCENT_BLUE, bg=BG_PANEL).pack(anchor="w", **pad)
+
+        self.var_allow_ocr = tk.BooleanVar(value=bool(self.settings.get("allow_ocr", True)))
+        tk.Checkbutton(parent, text="Taranmış sayfalarda Tesseract OCR (dijital PDF'lerde kapatabilirsiniz)",
+                       variable=self.var_allow_ocr, bg=BG_PANEL, fg=TEXT_PRIMARY,
+                       activebackground=BG_PANEL, selectcolor=BG_CARD,
+                       font=("Segoe UI", 8)).pack(anchor="w", padx=16, pady=2)
+
+        self.var_fresh = tk.BooleanVar(value=bool(self.settings.get("fresh", False)))
+        tk.Checkbutton(parent, text="Checkpoint'i yok say (sıfırdan başla)",
+                       variable=self.var_fresh, bg=BG_PANEL, fg=TEXT_PRIMARY,
+                       activebackground=BG_PANEL, selectcolor=BG_CARD,
+                       font=("Segoe UI", 8)).pack(anchor="w", padx=16, pady=2)
+
+        self.var_pages = tk.StringVar(value=str(self.settings.get("pages", "")))
+        tk.Label(parent, text="Sayfa aralığı (boş = tümü; örnek: 1-10 veya 1,2,5-8):",
+                 font=("Segoe UI", 8), fg=TEXT_MUTED, bg=BG_PANEL).pack(anchor="w", padx=16, pady=(6, 0))
+        tk.Entry(parent, textvariable=self.var_pages, font=("Consolas", 9), bg=BG_CARD, fg=TEXT_PRIMARY,
+                 insertbackground="white", relief=tk.FLAT, width=44).pack(anchor="w", padx=16, pady=(2, 10))
+
+        tk.Button(parent, text="💾 Ayarları Kaydet", command=self._save_settings_from_tab,
+                  font=("Segoe UI Semibold", 9), bg=ACCENT_BLUE, fg="#070A12",
+                  activebackground="#7DD3FC", relief=tk.FLAT, padx=14, pady=6, cursor="hand2"
+                  ).pack(anchor="w", padx=16, pady=6)
+
+        tk.Label(parent,
+                 text="Not: Ayarlar 'ÇEVİRİYİ BAŞLAT' ile otomatik uygulanır ve kaydedilir.\n"
+                      "Sayfa aralığı seçiminde seçilmeyen sayfalar çıktıda orijinal İngilizce kalır;\n"
+                      "çıktı dosyası <ad>_p<aralik>_ULTIMATE.pdf olarak adlandırılır.",
+                 font=("Segoe UI", 8), fg=TEXT_MUTED, bg=BG_PANEL, justify=tk.LEFT
+                 ).pack(anchor="w", padx=16, pady=(2, 10))
+
+    def _collect_settings(self) -> dict:
+        return {
+            "lmstudio_url": self.var_lm_url.get().strip(),
+            "lmstudio_port": self.var_lm_port.get().strip(),
+            "lmstudio_model": self.var_lm_model.get().strip(),
+            "allow_ocr": bool(self.var_allow_ocr.get()),
+            "pages": self.var_pages.get().strip(),
+            "fresh": bool(self.var_fresh.get()),
+        }
+
+    def _save_settings_from_tab(self):
+        self.settings = self._collect_settings()
+        if save_settings(self.settings):
+            self.status_text.set("💾 Ayarlar kaydedildi (build/gui_settings.json).")
+        else:
+            self.status_text.set("⚠ Ayarlar kaydedilemedi (build/ klasörü yazılabilir mi?).")
 
     def _create_studio_textbox(self, parent: tk.Frame) -> tk.Text:
         scroll = tk.Scrollbar(parent, bg=BG_PANEL, troughcolor=BG_TERMINAL, relief=tk.FLAT)
@@ -605,6 +679,20 @@ class EnterpriseTranslatorStudio:
             messagebox.showerror("Eksik Dosya", "Lütfen geçerli bir İngilizce PDF belgesi seçin!")
             return
 
+        # Ayarları topla, doğrula ve kalıcı hale getir
+        self.settings = self._collect_settings()
+        pages = None
+        if self.settings["pages"]:
+            try:
+                with fitz.open(in_p) as probe:
+                    total_pages = len(probe)
+                pages = pdf_bridge.parse_page_selection(self.settings["pages"], total_pages)
+            except ValueError as exc:
+                messagebox.showerror("Geçersiz Sayfa Aralığı", str(exc))
+                return
+        save_settings(self.settings)
+        apply_lmstudio_env(self.settings)
+
         self.is_running = True
         self.start_time = time.time()
         self.progress_val.set(2.0)
@@ -622,11 +710,21 @@ class EnterpriseTranslatorStudio:
             widget.config(state=tk.DISABLED)
 
         self._update_clock()
-        threading.Thread(target=self._worker_task, args=(in_p, out_p), daemon=True).start()
+        threading.Thread(
+            target=self._worker_task,
+            args=(in_p, out_p, self.settings["allow_ocr"], not self.settings["fresh"], pages),
+            daemon=True
+        ).start()
 
-    def _worker_task(self, in_p: str, out_p: str):
+    def _worker_task(self, in_p: str, out_p: str, allow_ocr: bool, resume: bool, pages):
         try:
-            pdf_bridge.run_pipeline(in_p, out_p, progress_cb=self._on_progress_event)
+            pdf_bridge.run_pipeline(
+                in_p, out_p,
+                progress_cb=self._on_progress_event,
+                allow_ocr=allow_ocr,
+                resume=resume,
+                pages=pages,
+            )
             self.root.after(0, self._on_pipeline_complete, out_p)
         except Exception as e:
             print(f"\n[KRİTİK HATA] {e}\n")
