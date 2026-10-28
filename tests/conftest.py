@@ -15,13 +15,23 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 
+class _Neutral:
+    """Sonsuz zincirlenebilir, çağrılabilir nötr yedek (transformers.logging.x() gibi)."""
+
+    def __getattr__(self, item):
+        return _Neutral()
+
+    def __call__(self, *args, **kwargs):
+        return _Neutral()
+
+
 def _install_stub(name: str, **attrs) -> None:
     if importlib.util.find_spec(name) is not None:
         return
     mod = types.ModuleType(name)
     for key, val in attrs.items():
         setattr(mod, key, val)
-    mod.__getattr__ = lambda item: object()  # çalışma anı sembolleri için nötr yedek
+    mod.__getattr__ = lambda item: _Neutral()  # çalışma anı sembolleri için nötr yedek
     sys.modules[name] = mod
 
 

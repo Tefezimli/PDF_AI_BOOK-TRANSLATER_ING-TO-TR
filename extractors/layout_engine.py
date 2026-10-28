@@ -14,6 +14,10 @@ from extractors.toc_recognizer import SpatialTOCRecognizer
 
 
 class GeometricLayoutEngine:
+    def __init__(self, allow_ocr: bool = True):
+        # allow_ocr=False -> taranmış sayfalarda Tesseract OCR atlanır (hızlı taslak modu).
+        self.allow_ocr = allow_ocr
+
     def extract_paragraphs(self, page: fitz.Page, page_num: int) -> List[ParagraphBlock]:
         raw_text_blocks = page.get_text("blocks")
         has_selectable_text = any(
@@ -36,7 +40,7 @@ class GeometricLayoutEngine:
         digital_blocks = self._extract_digital(page, page_num, blocks)
 
         final_blocks = list(digital_blocks)
-        if not (has_selectable_text and final_blocks) and HAS_TESSERACT:
+        if not (has_selectable_text and final_blocks) and self.allow_ocr and HAS_TESSERACT:
             ocr_blocks = self._extract_scanned_ocr(page, page_num, quarantined_blocks=digital_blocks)
             if ocr_blocks:
                 print(f"   [TARANMIS SAYFA OCR] Sayfa {page_num + 1}: {len(ocr_blocks)} gorsel blok ayristirildi.")

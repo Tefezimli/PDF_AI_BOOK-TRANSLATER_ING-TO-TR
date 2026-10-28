@@ -1,3 +1,4 @@
+import argparse
 import os
 import warnings
 from typing import List, Dict
@@ -48,9 +49,9 @@ from renderers import (
 )
 
 
-def run_pipeline(input_pdf: str, output_pdf: str) -> None:
+def run_pipeline(input_pdf: str, output_pdf: str, *, allow_ocr: bool = True) -> None:
     device, dtype = get_safe_device()
-    layout_engine = GeometricLayoutEngine()
+    layout_engine = GeometricLayoutEngine(allow_ocr=allow_ocr)
     translator = UniversalTranslationEngine(device, dtype)
 
     doc = fitz.open(input_pdf)
@@ -123,5 +124,25 @@ def run_pipeline(input_pdf: str, output_pdf: str) -> None:
     print("====================================================================")
 
 
+def build_arg_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="pdf_bridge",
+        description="PDF AI Engine Pro — İngilizce akademik PDF'yi Türkçeye çevirir (tamamen çevrimdışı)."
+    )
+    parser.add_argument("input_pdf", help="Çevrilecek İngilizce PDF dosyası")
+    parser.add_argument(
+        "-o", "--output-pdf",
+        help="Hedef Türkçe PDF (verilmezse '<girdi>_ULTIMATE.pdf' kullanılır)"
+    )
+    parser.add_argument(
+        "--no-ocr",
+        action="store_true",
+        help="Taranmış sayfalarda Tesseract OCR'i atla (dijital PDF'lerde hızlandırır)"
+    )
+    return parser
+
+
 if __name__ == "__main__":
-    run_pipeline("ornek_belge.pdf", "cevirilmis_belge_ULTIMATE.pdf")
+    args = build_arg_parser().parse_args()
+    output = args.output_pdf or f"{os.path.splitext(args.input_pdf)[0]}_ULTIMATE.pdf"
+    run_pipeline(args.input_pdf, output, allow_ocr=not args.no_ocr)
