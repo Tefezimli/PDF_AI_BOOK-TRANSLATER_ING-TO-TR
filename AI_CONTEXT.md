@@ -1,6 +1,27 @@
 # PDF AI Book Translator - Mimari Bağlam (AI Context)
 
-Bu depo, akademik ve teknik PDF kitaplarını (Siber Güvenlik, Sayısal Tasarım, Programlama Dilleri vb.) %100 çevrimdışı (air-gapped) ve mizanpajı bozmadan Türkçeye çeviren modüler bir sistemdir.
+Bu depo, akademik ve teknik PDF kitaplarını (Siber Güvenlik, Sayısal Tasarım, Programlama Dilleri vb.) %100 çevrimdışı (air-gapped) ve mizanpajı bozmadan Türkçeye çeviren modüler bir sistemdir. Sürüm: v18.1 (CHANGELOG.md'ye bakınız).
+
+## Yeni AI Oturumları İçin Doğrulama Reçeteleri (bu depoda çalışırken)
+Bu makinede torch/transformers/opencv KURULU DEĞİLDİR (GUI/LLM koşusu yapılamaz); saf mantık tam test edilir:
+```bash
+# 1) Test venv'i (yoksa): python3 -m venv /tmp/pdfai_testenv
+#    /tmp/pdfai_testenv/bin/pip install pymupdf numpy pillow pytesseract pytest ruff
+/tmp/pdfai_testenv/bin/python -m pytest          # 106 test, ~1 sn (torch/cv2 stub'lanır)
+/tmp/pdfai_testenv/bin/python -m ruff check .    # E9+F (sözdizimi+pyflakes)
+python3 -m py_compile <değişen dosyalar>         # hızlı derleme kontrolü
+# Hafif kurulum kontrolü (torch'suz ortamda paket import edilebilir mi):
+/tmp/pdfai_testenv/bin/pdfai-translate --doctor  # 0 hata beklenir (uyarılar normal)
+/tmp/pdfai_testenv/bin/pdfai-translate --eval    # offline 12/12 geçmeli
+```
+Dikkat: pytest'i boru ile koşarken `set -o pipefail` kullanın; commit öncesi her zaman tam paketi koşun. AI davranışı (LLM çevirisi) sadece ortak 16GB VRAM makinede sınanabilir.
+
+## Ortak Makine Doğrulama Listesi (16 GB VRAM)
+1. `pdfai-translate --doctor` çıktısını paylaş (bağımlılık+LM Studio raporu).
+2. `pdfai-translate --eval` skoru (LM Studio açık; 12/12 hedef).
+3. VHDL + siber güvenlik PDF'i ile `--pages 1-5` kısmi tur: kod blokları çevrilmiyor mu, terminal/VHDL satırları karantinada mı (f45af63 düzeltmeleri).
+4. GUI "⚙️ Çeviri Ayarları" sekmesi görsel kontrol + tam kitap turu.
+5. Uzun kitapta işi ortada kesip yeniden başlat → checkpoint resume mesajı.
 
 ## Yapay Zeka Asistanları İçin Kurallar
 1. Tüm projeyi tek dosyada birleştirmeyin. Her modül ortalama 100-250 satırdır; yalnızca ilgili modülü düzenleyin.

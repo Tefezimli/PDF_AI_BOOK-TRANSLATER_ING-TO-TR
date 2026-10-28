@@ -82,6 +82,6 @@ def test_main_invalid_pages_returns_error(tmp_path, monkeypatch, capsys):
     doc.save(str(src))
     doc.close()
 
-    monkeypatch.setattr(pdf_bridge, "run_pipeline", lambda *a, **k: (_ for _ in ()).throw(AssertionError("cagrililmamali")))
+    monkeypatch.setattr(pdf_bridge, "run_pipeline", lambda *a, **k: (_ for _ in ()).throw(AssertionError("cagirilmamali")))
     rc = pdf_bridge.main([str(src), "--pages", "9-9"])
     assert rc != 0
