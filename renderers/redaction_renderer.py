@@ -6,7 +6,11 @@ import pymupdf as fitz
 
 from core.models import BoundingBox, ParagraphBlock
 from core.hardware import release_memory
-from core.unicode_sanitizer import format_sub_sup_for_render, DeterministicArtifactPurger
+from core.unicode_sanitizer import (
+    DeterministicArtifactPurger,
+    format_sub_sup_for_render,
+    replace_corrupted_brackets,
+)
 from renderers.forensic_auditor import PageForensicAuditor
 
 
@@ -81,6 +85,7 @@ class RedactionPDFRenderer:
                     return fs, lh
             fs -= 0.30
         return 5.0, 0.80
+
     def render_document(
         self,
         doc: fitz.Document,
@@ -155,40 +160,13 @@ class RedactionPDFRenderer:
                                 break
 
             for p in page_paras:
-                p.text = (
-                    p.text.replace('\ufd3e', '(')
-                    .replace('\ufd3f', ')')
-                    .replace('﴾', '(')
-                    .replace('﴿', ')')
-                    .replace('\u27e6', '(')
-                    .replace('\u27e7', ')')
-                    .replace('⟦', '(')
-                    .replace('⟧', ')')
-                )
-                p.translated_text = (
-                    p.translated_text.replace('\ufd3e', '(')
-                    .replace('\ufd3f', ')')
-                    .replace('﴾', '(')
-                    .replace('﴿', ')')
-                    .replace('\u27e6', '(')
-                    .replace('\u27e7', ')')
-                    .replace('⟦', '(')
-                    .replace('⟧', ')')
-                )
+                p.text = replace_corrupted_brackets(p.text)
+                p.translated_text = replace_corrupted_brackets(p.translated_text)
                 if p.is_protected:
                     continue
 
                 render_text = format_sub_sup_for_render(p.translated_text, self.font_validator)
-                render_text = (
-                    render_text.replace('\ufd3e', '(')
-                    .replace('\ufd3f', ')')
-                    .replace('﴾', '(')
-                    .replace('﴿', ')')
-                    .replace('\u27e6', '(')
-                    .replace('\u27e7', ')')
-                    .replace('⟦', '(')
-                    .replace('⟧', ')')
-                )
+                render_text = replace_corrupted_brackets(render_text)
                 if not render_text.strip():
                     continue
 
@@ -249,16 +227,7 @@ class RedactionPDFRenderer:
                 used_font = ("math_tr_b" if p.is_bold else "math_tr") if font_registered else "helv"
                 align_mode = 1 if p.is_centered else 0
 
-                render_text = (
-                    render_text.replace('\ufd3e', '(')
-                    .replace('\ufd3f', ')')
-                    .replace('﴾', '(')
-                    .replace('﴿', ')')
-                    .replace('\u27e6', '(')
-                    .replace('\u27e7', ')')
-                    .replace('⟦', '(')
-                    .replace('⟧', ')')
-                )
+                render_text = replace_corrupted_brackets(render_text)
 
                 opt_fs, opt_lh = self._find_optimal_fontsize_and_leading(
                     scratch_page, target_rect, render_text, used_font, p.font_size, align_mode

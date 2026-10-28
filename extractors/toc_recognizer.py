@@ -50,7 +50,7 @@ class SpatialTOCRecognizer:
         y_bands: List[List[Dict[str, Any]]] = []
 
         for sp in sorted_spans:
-            yc = (sp["bbox"][1] + s["bbox"][3]) / 2.0 if "s" in locals() else (sp["bbox"][1] + sp["bbox"][3]) / 2.0
+            yc = (sp["bbox"][1] + sp["bbox"][3]) / 2.0
             sh = max(6.5, sp["bbox"][3] - sp["bbox"][1])
             if y_bands:
                 prev_band = y_bands[-1]

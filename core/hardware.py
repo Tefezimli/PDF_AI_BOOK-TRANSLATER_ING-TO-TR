@@ -63,5 +63,5 @@ def release_memory(device: torch.device) -> None:
         try:
             torch.cuda.empty_cache()
         except Exception:
-            _ = None
+            pass
     gc.collect()

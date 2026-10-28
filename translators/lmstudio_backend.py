@@ -21,7 +21,7 @@ class LMStudioBackend:
                     print(f"[LM STUDIO AKTIF] Yerel LLM Sunucusu Algilandi! Aktif Model: {self.model_id}")
                     return True
         except Exception:
-            _ = None
+            pass
         return False
 
     def set_domain(self, domain_label: str) -> None:

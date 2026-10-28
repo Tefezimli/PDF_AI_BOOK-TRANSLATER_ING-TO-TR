@@ -13,7 +13,6 @@ class PageForensicAuditor:
     donanım terminolojisi gafları, ﴾ ﴿ (\ufd3e, \ufd3f) parantezleri ve 2B kutu
     çakışmalarını (overlap) denetleyip otomatik onaran adli kalite katmanı.
     """
-    NUMBER_INVARIANT_RE = re.compile(r'\b(?:0x[0-9a-fA-F]+|\d+(?:\.\d+)?)\b')
 
     @classmethod
     def audit_and_repair_translation(

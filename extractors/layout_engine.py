@@ -35,15 +35,12 @@ class GeometricLayoutEngine:
 
         digital_blocks = self._extract_digital(page, page_num, blocks)
 
-        if has_selectable_text and len(digital_blocks) > 0:
-            final_blocks = digital_blocks
-        else:
-            final_blocks = list(digital_blocks)
-            if HAS_TESSERACT:
-                ocr_blocks = self._extract_scanned_ocr(page, page_num, quarantined_blocks=digital_blocks)
-                if ocr_blocks:
-                    print(f"   [TARANMIS SAYFA OCR] Sayfa {page_num + 1}: {len(ocr_blocks)} gorsel blok ayristirildi.")
-                    final_blocks.extend(ocr_blocks)
+        final_blocks = list(digital_blocks)
+        if not (has_selectable_text and final_blocks) and HAS_TESSERACT:
+            ocr_blocks = self._extract_scanned_ocr(page, page_num, quarantined_blocks=digital_blocks)
+            if ocr_blocks:
+                print(f"   [TARANMIS SAYFA OCR] Sayfa {page_num + 1}: {len(ocr_blocks)} gorsel blok ayristirildi.")
+                final_blocks.extend(ocr_blocks)
 
         for idx, b in enumerate(final_blocks):
             b.id = idx
@@ -525,7 +522,7 @@ class GeometricLayoutEngine:
                         if ends_conn or is_short_orphan or (reaches_edge and txt[0].islower()):
                             prev.text = self._join_hyphenated_or_spaced(prev.text, txt)
                             prev.box = BoundingBox(
-                                min(prev_b.box.x0, b.x0) if (prev_b := prev) else b.x0,
+                                min(prev.box.x0, b.x0),
                                 min(prev.box.y0, b.y0),
                                 max(prev.box.x1, b.x1),
                                 max(prev.box.y1, b.y1)

@@ -1,6 +1,5 @@
 import re
 import os
-import re
 from typing import Tuple, Dict, List, Optional
 import pymupdf as fitz
 
@@ -43,6 +42,17 @@ GLYPH_FALLBACK_MAP: Dict[str, str] = {
     "\u2460": "(1)", "\u2461": "(2)", "\u2462": "(3)", "\u2463": "(4)", "\u2464": "(5)",
     "\u2465": "(6)", "\u2466": "(7)", "\u2467": "(8)", "\u2468": "(9)", "\u2469": "(10)",
 }
+
+
+def replace_corrupted_brackets(text: str) -> str:
+    """Arapça süslü parantezler (﴾ ﴿) ve maske köşeli parantezlerini (⟦ ⟧)
+    standart ASCII ( ve ) karakterlerine çevirir."""
+    return (
+        text.replace("\ufd3e", "(")   # ﴾
+        .replace("\ufd3f", ")")       # ﴿
+        .replace("\u27e6", "(")       # ⟦
+        .replace("\u27e7", ")")       # ⟧
+    )
 
 
 class DeterministicArtifactPurger:
@@ -96,31 +106,13 @@ class DeterministicArtifactPurger:
     def sanitize_stream(cls, text: str) -> str:
         if not text:
             return ""
-        t = (
-            text.replace('\ufd3e', '(')
-            .replace('\ufd3f', ')')
-            .replace('﴾', '(')
-            .replace('﴿', ')')
-            .replace('\u27e6', '(')
-            .replace('\u27e7', ')')
-            .replace('⟦', '(')
-            .replace('⟧', ')')
-        )
+        t = replace_corrupted_brackets(text)
         t = cls.PUA_AND_CONTROL_RE.sub("", t)
         t = t.translate(cls.ARTIFACT_TRANSLATION_TABLE)
-        t = (
-            t.replace('\ufd3e', '(')
-            .replace('\ufd3f', ')')
-            .replace('﴾', '(')
-            .replace('﴿', ')')
-            .replace('\u27e6', '(')
-            .replace('\u27e7', ')')
-            .replace('⟦', '(')
-            .replace('⟧', ')')
-        )
         t = re.sub(r'\(\s+', '(', t)
         t = re.sub(r'\s+\)', ')', t)
         return re.sub(r'\s+', ' ', t).strip()
+
 
 def normalize_unicode_text(text: str) -> str:
     if not text:
@@ -174,9 +166,9 @@ def format_sub_sup_for_render(text: str, font_obj: Optional[fitz.Font] = None) -
     if font_obj:
         safe_chars = []
         for ch in res:
-            if ch in ('\ufd3e', '﴾', '\u27e6', '⟦'):
+            if ch in "\ufd3e\u27e6":   # ﴾ ⟦
                 safe_chars.append('(')
-            elif ch in ('\ufd3f', '﴿', '\u27e7', '⟧'):
+            elif ch in "\ufd3f\u27e7":  # ﴿ ⟧
                 safe_chars.append(')')
             elif ch in "\r\n\t " or font_obj.has_glyph(ord(ch)):
                 safe_chars.append(ch)
@@ -186,17 +178,7 @@ def format_sub_sup_for_render(text: str, font_obj: Optional[fitz.Font] = None) -
                 safe_chars.append("")
         res = "".join(safe_chars)
 
-    res = (
-        res.replace('\ufd3e', '(')
-        .replace('\ufd3f', ')')
-        .replace('﴾', '(')
-        .replace('﴿', ')')
-        .replace('\u27e6', '(')
-        .replace('\u27e7', ')')
-        .replace('⟦', '(')
-        .replace('⟧', ')')
-    )
-    return DeterministicArtifactPurger.sanitize_stream(res)
+    return DeterministicArtifactPurger.sanitize_stream(replace_corrupted_brackets(res))
 
 def select_best_unicode_fonts() -> Tuple[str, str, Optional[fitz.Font]]:
     turkish_test_chars = "\u00e7\u011f\u015f\u0131\u00f6\u00fc\u0130\u015e\u011e"

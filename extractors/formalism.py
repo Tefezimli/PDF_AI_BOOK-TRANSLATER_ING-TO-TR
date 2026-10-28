@@ -53,7 +53,7 @@ INLINE_CODE_EXACT_TOKENS = {
     "Q_next", "Q_reg", "D_in", "data_in", "data_out", "sel", "downto"
 }
 
-# VHDL ve Verilog satır yapılarını %100 tanıyan derleyici级 (compiler-grade) Regex
+# VHDL ve Verilog satır yapılarını tanıyan derleyici düzeyinde (compiler-grade) Regex
 HDL_LINE_REGEX = re.compile(
     r'^(?:'
     r'library\s+ieee\b|use\s+ieee\.[a-zA-Z0-9_\.]+\b|'
@@ -165,7 +165,7 @@ class UniversalFormalismQuarantine:
             return 0.0
         if is_mono:
             return 1.0
-        if "HDL_LINE_REGEX" in globals() and HDL_LINE_REGEX.match(clean):
+        if HDL_LINE_REGEX.match(clean):
             return 1.0
 
         n = len(clean)
@@ -264,12 +264,6 @@ class FormalismAnalyzer:
         clean = re.sub(r'\u27e6(?:CODE|MTH|INLCODE)[^\u27e7]*\u27e7', '', clean).strip()
         clean_no_step = re.sub(r'^[\u2776-\u2793\u2460-\u2473]\s*', '', clean).strip()
         if not clean_no_step:
-            return False
-        if UniversalFormalismQuarantine.is_natural_prose_or_option_line(clean_no_step):
-            return False
-        if UniversalFormalismQuarantine.is_natural_prose_or_option_line(clean_no_step):
-            return False
-        if UniversalFormalismQuarantine.is_natural_prose_or_option_line(clean_no_step):
             return False
         if UniversalFormalismQuarantine.is_natural_prose_or_option_line(clean_no_step):
             return False
@@ -395,12 +389,6 @@ class FormalismAnalyzer:
         if not clean:
             return True
 
-        if UniversalFormalismQuarantine.is_natural_prose_or_option_line(clean):
-            return False
-        if UniversalFormalismQuarantine.is_natural_prose_or_option_line(clean):
-            return False
-        if UniversalFormalismQuarantine.is_natural_prose_or_option_line(clean):
-            return False
         if UniversalFormalismQuarantine.is_natural_prose_or_option_line(clean):
             return False
         if FormalismAnalyzer.is_code_line_syntax(clean):

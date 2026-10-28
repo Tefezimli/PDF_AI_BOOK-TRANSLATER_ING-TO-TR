@@ -18,7 +18,7 @@ def run_cpp_layout_engine(
         try:
             os.remove(layout_out)
         except OSError:
-            _ = None
+            pass
 
     with open(layout_in, "w", encoding="utf-8") as f:
         for p in all_paragraphs:
