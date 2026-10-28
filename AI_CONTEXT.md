@@ -18,10 +18,11 @@ Dikkat: pytest'i boru ile koşarken `set -o pipefail` kullanın; commit öncesi 
 
 ## Ortak Makine Doğrulama Listesi (16 GB VRAM)
 1. `pdfai-translate --doctor` çıktısını paylaş (bağımlılık+LM Studio raporu).
-2. `pdfai-translate --eval` skoru (LM Studio açık; 12/12 hedef).
-3. VHDL + siber güvenlik PDF'i ile `--pages 1-5` kısmi tur: kod blokları çevrilmiyor mu, terminal/VHDL satırları karantinada mı (f45af63 düzeltmeleri).
-4. GUI "⚙️ Çeviri Ayarları" sekmesi görsel kontrol + tam kitap turu.
-5. Uzun kitapta işi ortada kesip yeniden başlat → checkpoint resume mesajı.
+2. `pdfai-translate kitap.pdf --analyze` kompozisyon raporu (çeviri öncesi, motor kurulmaz).
+3. `pdfai-translate --eval` skoru (LM Studio açık; 12/12 hedef).
+4. VHDL + siber güvenlik PDF'i ile `--pages 1-5` kısmi tur: kod blokları çevrilmiyor mu, terminal/VHDL satırları karantinada mı (f45af63 düzeltmeleri).
+5. GUI "⚙️ Çeviri Ayarları" sekmesi görsel kontrol + tam kitap turu.
+6. Uzun kitapta işi ortada kesip yeniden başlat → checkpoint resume mesajı.
 
 ## Yapay Zeka Asistanları İçin Kurallar
 1. Tüm projeyi tek dosyada birleştirmeyin. Her modül ortalama 100-250 satırdır; yalnızca ilgili modülü düzenleyin.

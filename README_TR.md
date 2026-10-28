@@ -152,6 +152,9 @@ python pdf_bridge.py akademik_kitap.pdf --pages 1-10
 # Ortam tanılama raporu (bağımlılıklar, font, LM Studio, önbellek)
 pdfai-translate --doctor
 
+# Çevirmeden önce kompozisyon raporu: düz metin/kod/formül oranları
+pdfai-translate kitap.pdf --analyze [--pages 1-20]
+
 # Çeviri kalitesi değerlendirme seti (LM Studio açıksa canlı LLM de sınanır)
 pdfai-translate --eval
 

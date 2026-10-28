@@ -153,6 +153,9 @@ python pdf_bridge.py academic_textbook.pdf --pages 1-10
 # Environment diagnostics (deps, fonts, LM Studio, cache)
 pdfai-translate --doctor
 
+# Pre-translation composition report: prose/code/formula ratios
+pdfai-translate book.pdf --analyze [--pages 1-20]
+
 # Translation quality evaluation set (also exercises the live LLM if LM Studio is up)
 pdfai-translate --eval
 

@@ -88,6 +88,89 @@ def parse_page_selection(spec: str, total_pages: int) -> List[int]:
     return valid
 
 
+def run_analysis(
+    input_pdf: str,
+    *,
+    allow_ocr: bool = True,
+    pages: List[int] = None,
+    print_fn=print,
+) -> Dict:
+    """Çeviri başlamadan kitabın kompozisyon raporu (salt-okunur, motor kurulmaz).
+
+    Kaç blok ne kadarı düz metin / kod / formül / üst-alt bilgi ve kaç sayfanın
+    OCR'a düştüğü gösterilir; çevrilecek işin büyüklüğü önceden görülür.
+    Hafif kurulumda da çalışır (torch/transformers gerekmez).
+    """
+    from extractors import GeometricLayoutEngine
+
+    layout_engine = GeometricLayoutEngine(allow_ocr=allow_ocr)
+    doc = fitz.open(input_pdf)
+    try:
+        total_pages = len(doc)
+        page_list = sorted(set(pages)) if pages is not None else list(range(total_pages))
+
+        stats = {
+            "total_pages": total_pages,
+            "analyzed_pages": len(page_list),
+            "blocks": 0,
+            "prose": 0,
+            "code": 0,
+            "math": 0,
+            "header_footer": 0,
+            "ocr_blocks": 0,
+        }
+        per_page = []
+
+        for page_num in page_list:
+            paras = layout_engine.extract_paragraphs(doc[page_num], page_num)
+            counts = {"prose": 0, "code": 0, "math": 0, "header_footer": 0, "ocr": 0}
+            for p in paras:
+                stats["blocks"] += 1
+                if p.is_code_block:
+                    stats["code"] += 1
+                    counts["code"] += 1
+                elif p.is_header_footer:
+                    stats["header_footer"] += 1
+                    counts["header_footer"] += 1
+                elif p.is_standalone_math:
+                    stats["math"] += 1
+                    counts["math"] += 1
+                else:
+                    stats["prose"] += 1
+                    counts["prose"] += 1
+                if p.is_from_ocr:
+                    stats["ocr_blocks"] += 1
+                    counts["ocr"] += 1
+            per_page.append((page_num, counts))
+
+        def pct(n):
+            return f"%{100.0 * n / stats['blocks']:.1f}" if stats["blocks"] else "%0.0"
+
+        print_fn("==================== ON ANALIZ RAPORU ====================")
+        print_fn(f"  Belge          : {input_pdf}")
+        print_fn(f"  Sayfa          : {stats['analyzed_pages']}/{stats['total_pages']}")
+        print_fn(f"  Toplam blok    : {stats['blocks']}")
+        print_fn(f"  Duz metin      : {stats['prose']:5}  ({pct(stats['prose'])})  <- cevrilecek")
+        print_fn(f"  Kod karantina  : {stats['code']:5}  ({pct(stats['code'])})  <- korunur")
+        print_fn(f"  Formul/BNF     : {stats['math']:5}  ({pct(stats['math'])})  <- korunur")
+        print_fn(f"  Ust/alt bilgi  : {stats['header_footer']:5}  ({pct(stats['header_footer'])})  <- korunur")
+        if stats["ocr_blocks"]:
+            print_fn(f"  OCR bloklari   : {stats['ocr_blocks']}  (taranmis sayfa tespit edildi)")
+        print_fn("-----------------------------------------------------------")
+        for page_num, counts in per_page[:10]:
+            print_fn(
+                f"  Sayfa {page_num + 1:>3}: metin={counts['prose']} kod={counts['code']} "
+                f"formul={counts['math']} ust/alt={counts['header_footer']}"
+                + (f" ocr={counts['ocr']}" if counts["ocr"] else "")
+            )
+        if len(per_page) > 10:
+            print_fn(f"  ... ve {len(per_page) - 10} sayfa daha")
+        print_fn("===========================================================")
+        return stats
+    finally:
+        doc.close()
+
+
 def run_pipeline(
     input_pdf: str,
     output_pdf: str,
@@ -243,6 +326,11 @@ def build_arg_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Çeviri kalitesi değerlendirme setini koştur (LM Studio açıksa canlı LLM de sınanır)"
     )
+    parser.add_argument(
+        "--analyze",
+        action="store_true",
+        help="Çevirmeden önce kompozisyon raporu: düz metin/kod/formül oranları (motor kurulmaz, hızlı)"
+    )
     return parser
 
 
@@ -286,6 +374,10 @@ def main(argv: List[str] = None) -> int:
         except ValueError as exc:
             print(f"[HATA] Gecersiz --pages ifadesi: {exc}")
             return 1
+
+    if args.analyze:
+        run_analysis(args.input_pdf, allow_ocr=not args.no_ocr, pages=pages)
+        return 0
 
     run_pipeline(
         args.input_pdf,
