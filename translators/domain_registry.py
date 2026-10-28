@@ -263,7 +263,60 @@ class DynamicAcademicRegistry:
                 (r"\bcommand\s+shells?\b", "komut kabukları"),
                 (r"\blistening\s+port\b", "dinleme portu"),
             ]
-        }
+        },
+        "medicine": {
+            "label": "Tıp ve Sağlık Bilimleri",
+            "keywords": {
+                "myocardial", "anatomy", "physiology", "pathology", "diagnosis",
+                "symptom", "symptoms", "treatment", "patient", "patients",
+                "clinical", "pharmacology", "lesion", "artery", "therapy"
+            },
+            "polysemy_locks": [
+                (r"\bmyocardial\s+infarction\b", "miyokard enfarktüsü (myocardial infarction)"),
+                (r"\bheart\s+attack\b", "kalp krizi (heart attack)"),
+                (r"\bcerebrovascular\s+accident\b", "serebrovasküler olay / inme (CVA)"),
+                (r"\bcommon\s+cold\b", "nezle (soğuk algınlığı)"),
+                (r"\bhigh\s+blood\s+pressure\b", "yüksek tansiyon (hipertansiyon)"),
+                (r"\bshortness\s+of\s+breath\b", "nefes darlığı"),
+                (r"\bside\s+effects\b", "yan etkiler"),
+            ]
+        },
+        "law": {
+            "label": "Hukuk",
+            "keywords": {
+                "plaintiff", "defendant", "jurisdiction", "tort", "statute",
+                "precedent", "liability", "negligence", "indemnify", "tortfeasor"
+            },
+            "polysemy_locks": [
+                (r"\bplaintiffs?\b", "davacı (plaintiff)"),
+                (r"\bdefendants?\b", "davalı (defendant)"),
+                (r"\bburden\s+of\s+proof\b", "ispat yükü (burden of proof)"),
+                (r"\bstare\s+decisis\b", "içtihat istikrarı (stare decisis)"),
+                (r"\bforce\s+majeure\b", "mücbir sebep (force majeure)"),
+                (r"\bintellectual\s+property\b", "fikri mülkiyet (intellectual property)"),
+                (r"\bpower\s+of\s+attorney\b", "vekaletname (power of attorney)"),
+                (r"\btorts?\b", "haksız fiil (tort)"),
+            ]
+        },
+        "economics": {
+            "label": "İktisat ve Finans",
+            "keywords": {
+                "inflation", "elasticity", "monopoly", "oligopoly", "gdp",
+                "macroeconomic", "microeconomic", "fiscal", "monetary",
+                "surplus", "utility", "equilibrium"
+            },
+            "polysemy_locks": [
+                (r"\bsupply\s+and\s+demand\b", "arz ve talep (supply and demand)"),
+                (r"\bopportunity\s+cost\b", "fırsat maliyeti (opportunity cost)"),
+                (r"\bgross\s+domestic\s+product\b", "gayri safi yurtiçi hasıla (GSYH)"),
+                (r"\bcomparative\s+advantage\b", "kıyaslı üstünlük (comparative advantage)"),
+                (r"\bconsumer\s+surplus\b", "tüketici rantı (consumer surplus)"),
+                (r"\belasticity\s+of\s+demand\b", "talebin esnekliği"),
+                (r"\bmonetary\s+policy\b", "para politikası (monetary policy)"),
+                (r"\bfiscal\s+policy\b", "maliye politikası (fiscal policy)"),
+                (r"\blaw\s+of\s+diminishing\s+(?:marginal\s+)?returns\b", "azalan getiri yasası"),
+            ]
+        },
     }
 
     def __init__(self):
