@@ -2,6 +2,15 @@
 import pdf_bridge
 
 
+def test_version_flag(capsys):
+    try:
+        pdf_bridge.build_arg_parser().parse_args(["--version"])
+        assert False, "argparse SystemExit vermeli"
+    except SystemExit as e:
+        assert e.code == 0
+    assert pdf_bridge.__version__ in capsys.readouterr().out
+
+
 def test_defaults():
     args = pdf_bridge.build_arg_parser().parse_args(["kitap.pdf"])
     assert args.input_pdf == "kitap.pdf"

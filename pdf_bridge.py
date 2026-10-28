@@ -4,6 +4,9 @@ import re
 import warnings
 from typing import List, Dict
 
+# pyproject.toml'daki version alanıyla senkron tutulmalı (sürümlerde).
+__version__ = "18.1.0"
+
 os.environ["HF_HUB_DISABLE_TELEMETRY"] = "1"
 os.environ["HF_HUB_DISABLE_IMPLICIT_TOKEN"] = "1"
 os.environ["HF_TOKEN"] = ""
@@ -206,6 +209,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
         prog="pdf_bridge",
         description="PDF AI Engine Pro — İngilizce akademik PDF'yi Türkçeye çevirir (tamamen çevrimdışı)."
     )
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     parser.add_argument(
         "input_pdf", nargs="?",
         help="Çevrilecek İngilizce PDF dosyası (--doctor/--eval dışında zorunlu)"
