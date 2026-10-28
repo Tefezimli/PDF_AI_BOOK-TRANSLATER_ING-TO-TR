@@ -10,9 +10,9 @@ import json
 import os
 from typing import Any, Dict
 
-from core.paths import build_dir
+from core.paths import build_path
 
-SETTINGS_PATH = build_dir("gui_settings.json")
+SETTINGS_PATH = build_path("gui_settings.json")
 
 DEFAULTS: Dict[str, Any] = {
     "lmstudio_url": "",    # boş = port'tan türetilir (http://localhost:<port>/v1)

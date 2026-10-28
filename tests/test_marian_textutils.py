@@ -43,14 +43,18 @@ def _make_engine(lmstudio_available: bool, llm_output="llm cevirisi", store=None
     """translate_block'u model yüklemeden çalıştırmak için sahte motor gövdesi.
 
     _split_into_sentences boş döner: Opus yolu boş cümle listesinde erken
-    döner, tokenizer/model hiç dokunulmaz.
+    döner, tokenizer/model hiç dokunulmaz. llm_output çağrılabilir verilirse
+    maskeli girdiye göre dinamik yanıt üretir (identity motor simülasyonu).
     """
+    def _translate(masked):
+        return llm_output(masked) if callable(llm_output) else llm_output
+
     return types.SimpleNamespace(
         cache=_RecordingCache(store),
         registry=DynamicAcademicRegistry(),
         lmstudio=types.SimpleNamespace(
             available=lmstudio_available,
-            translate_masked_text=lambda masked: llm_output,
+            translate_masked_text=_translate,
         ),
         _split_into_sentences=lambda text: [],
     )
@@ -84,3 +88,33 @@ def test_llm_engine_does_not_serve_opus_cached_translation():
     result = UniversalTranslationEngine.translate_block(engine, _make_block())
     assert result == "taze llm cevirisi"
     assert engine.cache.get_keys == ["llm|The flip-flop stores one bit of data."]
+
+
+# --- maskeli-faz onarımları: unmask'ten önce uygulanır ---
+
+def test_llm_branch_preserves_masked_math_end_to_end():
+    # Identity motor: maskeli metin aynen döner. "n > s" ⟦MTH_n⟧ maskesinden
+    # geri çözülünce artık "n'e"ye bozulmamalı (masked-faz kuralı unmask'ten
+    # önce çalıştığı için maske değeri korunur).
+    engine = _make_engine(
+        lmstudio_available=True,
+        llm_output=lambda masked: masked,
+    )
+    result = UniversalTranslationEngine.translate_block(
+        engine, _make_block("The condition n > s holds.")
+    )
+    assert "n > s" in result
+    assert "n'e" not in result
+
+
+def test_llm_branch_repairs_unmasked_artifact_before_unmask():
+    # Motor maskesiz "a != b" kalıntısı üretirse masked-fazda ≠'ye onarılır;
+    # kurallar unmask sonrası listeye kalmadığı için davranış burada yaşar.
+    engine = _make_engine(
+        lmstudio_available=True,
+        llm_output=lambda masked: masked + " varsayim: a != b",
+    )
+    result = UniversalTranslationEngine.translate_block(
+        engine, _make_block("Check the comparison.")
+    )
+    assert "a \u2260 b" in result

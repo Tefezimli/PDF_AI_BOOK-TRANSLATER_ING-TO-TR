@@ -112,8 +112,6 @@ POST_TRANSLATION_FIXES = [
     (r'[\ufd3f\u27e7]', ')'),
     (r'(\w)\s+@\s+(\w)', r'\1-\2'),
     (r'(?<=\s)@|@(?:\s|$)', ''),
-    (r'\b([0-9a-zA-Z]+)\s*>\s*s\b', r"\1'e"),
-    (r'!=', '\u2260'),
 
     # 1. "Don't-Care Conditions" -> "Bakım Koşulları" Gafının Kesin Onarımı
     (r'\b[Bb]akım\s+koşulları(?:nın|na|nı|ndan|nda)?\b', 'farketmez durumları'),
@@ -207,6 +205,15 @@ POST_TRANSLATION_FIXES = [
     (r'\bOrthogonality\b', 'Dikgenlik (Ortogonallik)'),
     (r'\bExpressivity\b', 'İfade Gücü'),
     (r'\bAliasing\b', 'Takma Ad Kullanımı (Aliasing)'),
+]
+
+# Maskeli-faz onarımları: yalnızca maskeler (⟦CODE_n⟧/⟦MTH_n⟧) yerindeyken,
+# yani unmask'ten ÖNCE uygulanır; geri çözülen gerçek matematik değerlerine
+# ("n > s", "x != y" gibi) asla dokunmazlar. Bu yüzden apply_post_fixes'te
+# (cache.get yolu dâhil) bulunmazlar.
+POST_FIXES_ON_MASKED_TEXT = [
+    (r'\b([0-9a-zA-Z]+)\s*>\s*s\b', r"\1'e"),  # "n > s" -> "n'e" (yalnızca maskeli faz)
+    (r'!=', '\u2260'),  # "a != b" -> "a ≠ b" (yalnızca maskeli faz)
 ]
 
 
@@ -367,5 +374,15 @@ class DynamicAcademicRegistry:
     def apply_post_fixes(text: str) -> str:
         res = text
         for pat_s, repl_s in POST_TRANSLATION_FIXES:
+            res = re.sub(pat_s, repl_s, res)
+        return res
+
+    @staticmethod
+    def apply_masked_phase_fixes(text: str) -> str:
+        """Maskeli-faz onarımları: yalnızca maskeler (⟦CODE_n⟧/⟦MTH_n⟧) metinde
+        yerindeyken, unmask'ten önce çağrılmalı; geri çözülecek gerçek matematik
+        değerleri korunur."""
+        res = text
+        for pat_s, repl_s in POST_FIXES_ON_MASKED_TEXT:
             res = re.sub(pat_s, repl_s, res)
         return res

@@ -109,6 +109,11 @@ class UniversalTranslationEngine:
             m_txt, m_dict = FormalismAnalyzer.mask_inline_formal_tokens(body)
             llm_out = self.lmstudio.translate_masked_text(m_txt)
             if llm_out:
+                # Maskeli-faz onarımları: motorun ürettiği maskesiz "n > s"/"!="
+                # kalıntıları yalnızca maskeler yerindeyken düzeltilir; unmask ile
+                # geri çözülen gerçek matematik değerleri apply_post_fixes'e
+                # korunmuş halde ulaşır.
+                llm_out = DynamicAcademicRegistry.apply_masked_phase_fixes(llm_out)
                 restored = FormalismAnalyzer.unmask_formal_tokens(llm_out, m_dict)
                 # Adli denetim: LLM maskeleri sildiyse geri ekle, ciddi eksik
                 # çeviride orijinale dön (önceden ölü koddu; artık devrede).
@@ -172,6 +177,9 @@ class UniversalTranslationEngine:
 
         final_sents: List[str] = []
         for dec, m_dict in zip(decoded_list, mask_dicts):
+            # Maskeli-faz onarımları unmask'ten ÖNCE: geri çözülecek matematik
+            # değerleri ("n > s", "x != y") korunur, motor kalıntıları onarılır.
+            dec = DynamicAcademicRegistry.apply_masked_phase_fixes(dec)
             restored = FormalismAnalyzer.unmask_formal_tokens(dec, m_dict)
             restored = self.registry.apply_post_fixes(restored)
             restored = DeterministicArtifactPurger.sanitize_stream(restored)

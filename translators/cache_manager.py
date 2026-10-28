@@ -2,7 +2,7 @@ import os
 import re
 import json
 from typing import Dict, Optional
-from core.paths import build_dir
+from core.paths import build_path
 from core.unicode_sanitizer import DeterministicArtifactPurger
 from translators.domain_registry import DynamicAcademicRegistry
 
@@ -19,8 +19,9 @@ class SelfHealingCache:
     CONTAMINATION_RE = re.compile(r'(?:CODE_\d+|MTH_\d+)')
 
     def __init__(self, cache_path: str = None):
-        # None -> PDF_AI_WORKDIR kökünden çözülür (varsayılan build/).
-        self.cache_path = cache_path or build_dir("translation_cache.json")
+        # None -> PDF_AI_WORKDIR ya da PROJECT_ROOT/build kökünden çözülür
+        # (CWD'den bağımsız; bkz. core.paths.build_path).
+        self.cache_path = cache_path or build_path("translation_cache.json")
         self.data: Dict[str, str] = {"__version__": CACHE_VERSION}
         self._load_and_heal()
 

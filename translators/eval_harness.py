@@ -100,6 +100,8 @@ def offline_transform(text: str) -> str:
     registry = DynamicAcademicRegistry()
     body = registry.apply_pre_normalization(text)
     masked, masks = FormalismAnalyzer.mask_inline_formal_tokens(body)
+    # Gerçek boru hattı gibi: maskeli-faz onarımları unmask'ten ÖNCE uygulanır.
+    masked = DynamicAcademicRegistry.apply_masked_phase_fixes(masked)
     restored = FormalismAnalyzer.unmask_formal_tokens(masked, masks)
     restored = DynamicAcademicRegistry.apply_post_fixes(restored)
     return DeterministicArtifactPurger.sanitize_stream(restored)
@@ -144,6 +146,8 @@ def run_eval(
                 if not llm_out:
                     print_fn(f"  [FAIL] {case['id']}: LLM bos yanit dondu")
                     continue
+                # Gerçek motor gibi: maskeli-faz onarımları unmask'ten önce.
+                llm_out = DynamicAcademicRegistry.apply_masked_phase_fixes(llm_out)
                 output = DeterministicArtifactPurger.sanitize_stream(
                     DynamicAcademicRegistry.apply_post_fixes(
                         FormalismAnalyzer.unmask_formal_tokens(llm_out, masks)

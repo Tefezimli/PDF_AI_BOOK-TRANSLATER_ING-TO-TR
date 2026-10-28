@@ -4,7 +4,7 @@ from typing import List, Dict, Optional
 import pymupdf as fitz
 
 from core.models import ParagraphBlock
-from core.paths import build_dir
+from core.paths import build_path
 from core.unicode_sanitizer import format_sub_sup_for_render
 
 
@@ -18,7 +18,7 @@ def find_cpp_engine_path() -> Optional[str]:
     """Platforma göre AiEngine çalıştırılabilirini bulur; yoksa None döner."""
     candidates = ["AiEngine.exe", "AiEngine"] if os.name != "nt" else ["AiEngine.exe"]
     for name in candidates:
-        path = build_dir(name)
+        path = build_path(name)
         if os.path.exists(path):
             return path
     return None
@@ -32,9 +32,9 @@ def run_cpp_layout_engine(
         print("\n2. [C++ AiEngine] Bu surumde pasif (cikti henuz Python'a baglanmadi); Python Auto-Fit kullanilacak.")
         return
 
-    layout_in = build_dir("layout_in.txt")
-    layout_out = build_dir("layout_out.txt")
-    os.makedirs(build_dir(), exist_ok=True)
+    layout_in = build_path("layout_in.txt")
+    layout_out = build_path("layout_out.txt")
+    os.makedirs(build_path(), exist_ok=True)  # build dizinini garantile (CWD'den bağımsız)
     if os.path.exists(layout_out):
         try:
             os.remove(layout_out)
