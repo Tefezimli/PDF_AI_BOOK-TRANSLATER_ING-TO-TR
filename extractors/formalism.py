@@ -99,6 +99,12 @@ PROSE_COLON_LABEL_RE = re.compile(
     re.I
 )
 
+# Terminal istemcileri ve konsol çıktı imzaları ($, #, msf>, root@, [*] ...)
+TERMINAL_PROMPT_RE = re.compile(
+    r'^(?:\$\s+|#\s+|>>>\s+|\.{3}\s+|msf\s+|msf\s*>|msf\d?\s*>|msf\s+auxiliary\(|'
+    r'\[\*\]\s*|\[\+\]\s*|\[\-\]\s*|\[!\]\s*|C:\\>|root@|kali@)'
+)
+
 
 class UniversalFormalismQuarantine:
     NATURAL_COLLOCATIONS = {
@@ -122,6 +128,15 @@ class UniversalFormalismQuarantine:
         clean = re.sub(r'<(?:sub|sup):[^>]+>', '', text).strip()
         clean = re.sub(r'\u27e6(?:CODE|MTH|INLCODE)[^\u27e7]*\u27e7', ' word ', clean).strip()
         if not clean:
+            return False
+        # VHDL/Verilog yapı bildirimleri ("architecture rtl of counter is" gibi)
+        # doğal dil kilidine takılmamalı; derleyici düzeyindeki HDL regex'i yalnızca
+        # bu iskeletlerle eşleşir, İngilizce cümlelerle asla eşleşmez.
+        if HDL_LINE_REGEX.match(clean):
+            return False
+        # Terminal istemiyle başlayan satırlar ($, #, msf>...) asla doğal dil değildir;
+        # aksi halde "target"/"host" gibi ağ terimleri oranlı prose kilidini tetikler.
+        if TERMINAL_PROMPT_RE.match(clean):
             return False
         if re.match(
             r'^(?:[\u2022\-\*]\s*)?(?:Name|Description|Setting|Settings|Current\s+Setting|'
@@ -286,11 +301,7 @@ class FormalismAnalyzer:
                 return True
 
         # 2. Terminal istemcileri ve konsol çıktıları
-        if re.match(
-            r'^(?:\$\s+|#\s+|>>>\s+|\.{3}\s+|msf\s+|msf\s*>|msf\d?\s*>|msf\s+auxiliary\(|'
-            r'\[\*\]\s*|\[\+\]\s*|\[\-\]\s*|\[!\]\s*|C:\\>|root@|kali@)',
-            clean_no_step
-        ):
+        if TERMINAL_PROMPT_RE.match(clean_no_step):
             return True
 
         # 3. Genel Programlama Dilleri (C/C++, Python, Java, Assembly)
