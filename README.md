@@ -145,12 +145,14 @@ run_pipeline(
 Or straight from the terminal — or install as a package:
 
 ```bash
-python pdf_bridge.py academic_textbook.pdf -o academic_textbook_TR.pdf [--no-ocr]
+python pdf_bridge.py academic_textbook.pdf -o academic_textbook_TR.pdf [--no-ocr] [--fresh]
 
 # Package install (provides the pdfai-translate command):
 pip install -e .          # light install (without torch/transformers)
 pip install -e .[ai]      # includes CPU torch + transformers (for CUDA use Kurulum_Yap.bat)
 ```
+
+> **Crash-safe resume:** for long books, restarting after a crash continues the layout analysis from the last completed page and reloads translations from cache. Use `--fresh` to start over.
 
 ---
 

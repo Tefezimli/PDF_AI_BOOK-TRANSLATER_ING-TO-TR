@@ -76,8 +76,9 @@ class SelfHealingCache:
     def save(self) -> bool:
         try:
             os.makedirs(os.path.dirname(self.cache_path), exist_ok=True)
+            # Kompakt JSON: save her sayfada çağrıldığı için indent gereksiz şişme yaratır.
             with open(self.cache_path, "w", encoding="utf-8") as f:
-                json.dump(self.data, f, ensure_ascii=False, indent=2)
+                json.dump(self.data, f, ensure_ascii=False)
             return True
         except Exception:
             return False

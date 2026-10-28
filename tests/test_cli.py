@@ -19,6 +19,26 @@ def test_no_ocr_flag():
     assert args.no_ocr is True
 
 
+def test_fresh_flag_defaults_false():
+    args = pdf_bridge.build_arg_parser().parse_args(["kitap.pdf"])
+    assert args.fresh is False
+    args = pdf_bridge.build_arg_parser().parse_args(["kitap.pdf", "--fresh"])
+    assert args.fresh is True
+
+
+def test_main_passes_resume_flags(tmp_path, monkeypatch):
+    src = tmp_path / "kitap.pdf"
+    src.write_bytes(b"%PDF-1.4 test")
+    calls = {}
+    monkeypatch.setattr(pdf_bridge, "run_pipeline", lambda i, o, **kw: calls.update(**kw))
+
+    pdf_bridge.main([str(src)])
+    assert calls["resume"] is True
+
+    pdf_bridge.main([str(src), "--fresh"])
+    assert calls["resume"] is False
+
+
 def test_main_invokes_pipeline_with_default_output(tmp_path, monkeypatch):
     src = tmp_path / "kitap.pdf"
     src.write_bytes(b"%PDF-1.4 test")

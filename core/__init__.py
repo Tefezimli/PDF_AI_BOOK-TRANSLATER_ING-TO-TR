@@ -1,5 +1,6 @@
 from .models import BoundingBox, ParagraphBlock
 from .hardware import HAS_TESSERACT, configure_tesseract, get_safe_device, release_memory
+from .checkpoint import ExtractionCheckpoint
 from .unicode_sanitizer import (
     SUPERSCRIPT_MAP,
     SUBSCRIPT_MAP,

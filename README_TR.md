@@ -144,12 +144,14 @@ run_pipeline(
 Terminalden tek komutla da mümkün:
 
 ```bash
-python pdf_bridge.py akademik_kitap.pdf -o akademik_kitap_TR.pdf [--no-ocr]
+python pdf_bridge.py akademik_kitap.pdf -o akademik_kitap_TR.pdf [--no-ocr] [--fresh]
 
 # Paket olarak kurulum (pdfai-translate komutunu verir):
 pip install -e .          # hafif kurulum (torch/transformers hariç)
 pip install -e .[ai]      # CPU torch + transformers dahil (CUDA için Kurulum_Yap.bat'ı kullanın)
 ```
+
+> **Kesintisiz devam:** Uzun kitaplarda işlem çökse bile yeniden başlattığınızda mizanpaj analizi önceki kaldığı sayfadan devam eder ve çeviriler önbellekten geri yüklenir. `--fresh` ile sıfırdan başlatabilirsiniz.
 
 ---
 

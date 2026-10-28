@@ -20,6 +20,7 @@ except ImportError:
 
 from core import (
     ParagraphBlock,
+    ExtractionCheckpoint,
     get_safe_device,
     release_memory,
     select_best_unicode_fonts,
@@ -55,7 +56,14 @@ class ProgressReporter:
             pass
 
 
-def run_pipeline(input_pdf: str, output_pdf: str, *, allow_ocr: bool = True, progress_cb=None) -> None:
+def run_pipeline(
+    input_pdf: str,
+    output_pdf: str,
+    *,
+    allow_ocr: bool = True,
+    progress_cb=None,
+    resume: bool = True,
+) -> None:
     reporter = ProgressReporter(progress_cb)
     device, dtype = get_safe_device()
     layout_engine = GeometricLayoutEngine(allow_ocr=allow_ocr)
@@ -71,10 +79,18 @@ def run_pipeline(input_pdf: str, output_pdf: str, *, allow_ocr: bool = True, pro
 
     print(f"\n[ISLEM BASLADI] Toplam Sayfa: {total_pages} | Belge: {input_pdf}")
 
+    checkpoint = ExtractionCheckpoint.create_or_load(
+        input_pdf, allow_ocr=allow_ocr, total_pages=total_pages, resume=resume
+    )
+
     global_id = 0
     for page_num in range(total_pages):
         page = doc[page_num]
-        paras = layout_engine.extract_paragraphs(page, page_num)
+        if checkpoint.has_page(page_num):
+            paras = checkpoint.get_page(page_num)
+        else:
+            paras = layout_engine.extract_paragraphs(page, page_num)
+            checkpoint.add_page(page_num, paras)
         for p in paras:
             p.id = global_id
             global_id += 1
@@ -93,12 +109,14 @@ def run_pipeline(input_pdf: str, output_pdf: str, *, allow_ocr: bool = True, pro
             processed_blocks += 1
 
         reporter.emit("progress", done=processed_blocks, total=total_blocks)
+        # Her sayfada önbellek floşu: çökme durumunda en fazla o anki sayfanın
+        # çevirisi kaybolur (eskiden 10 sayfaya kadar kayıp olabilirdi).
+        translator.save_cache()
         if (page_num + 1) % 10 == 0 or (page_num + 1) == total_pages:
             print(
                 f"   Ceviri Ilerlemesi: {processed_blocks}/{total_blocks} blok "
                 f"(Sayfa {page_num + 1}/{total_pages}) tamamlandi."
             )
-            translator.save_cache()
             release_memory(device)
 
     font_reg_path, font_bold_path, font_validator = select_best_unicode_fonts()
@@ -130,6 +148,8 @@ def run_pipeline(input_pdf: str, output_pdf: str, *, allow_ocr: bool = True, pro
     clean_txt_file = f"{base_name}.txt"
     review_txt_file = f"{base_name}_INCELEME.txt"
     export_copyable_txt_files(all_paragraphs, clean_txt_file, review_txt_file)
+    checkpoint.discard()
+    print("[CHECKPOINT] Islem tamamlandi; ara checkpoint temizlendi.")
     reporter.emit("done", output_pdf=final_pdf_path, clean_txt=clean_txt_file, review_txt=review_txt_file)
 
     print("\n====================================================================")
@@ -155,6 +175,11 @@ def build_arg_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Taranmış sayfalarda Tesseract OCR'i atla (dijital PDF'lerde hızlandırır)"
     )
+    parser.add_argument(
+        "--fresh",
+        action="store_true",
+        help="Var olan mizanpaj checkpoint'ini yok say ve analizleri sıfırdan yap"
+    )
     return parser
 
 
@@ -166,7 +191,12 @@ def main(argv: List[str] = None) -> int:
         return 1
 
     output = args.output_pdf or f"{os.path.splitext(args.input_pdf)[0]}_ULTIMATE.pdf"
-    run_pipeline(args.input_pdf, output, allow_ocr=not args.no_ocr)
+    run_pipeline(
+        args.input_pdf,
+        output,
+        allow_ocr=not args.no_ocr,
+        resume=not args.fresh,
+    )
     return 0
 
 

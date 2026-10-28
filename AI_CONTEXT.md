@@ -28,5 +28,11 @@ Bu depo, akademik ve teknik PDF kitaplarını (Siber Güvenlik, Sayısal Tasarı
 - Paketleme: `pyproject.toml` (pdf-ai-translator 18.0.0; `pip install -e .`, konsol komutu `pdfai-translate` → `pdf_bridge.main()`). Ağır AI stack'i bilinçli olarak `[ai]` extra'sında: sihirbaz CUDA torch'u PyTorch indeksten kurar, sert bağımlılık olsaydı çakışırdı. `requirements.txt` sürümleri sınırlı aralıklarla bağlıdır.
 
 ## Yapılandırma ve İlerleme Kanalı
-- `run_pipeline(input_pdf, output_pdf, *, allow_ocr=True, progress_cb=None)`; `progress_cb(event, detail)` olayları: `"stage"` ({stage, label, percent}), `"progress"` ({done, total}), `"done"` ({output_pdf, clean_txt, review_txt}).
+- `run_pipeline(input_pdf, output_pdf, *, allow_ocr=True, progress_cb=None, resume=True)`; `progress_cb(event, detail)` olayları: `"stage"` ({stage, label, percent}), `"progress"` ({done, total}), `"done"` ({output_pdf, clean_txt, review_txt}).
 - LM Studio ortam değişkenleri: `PDF_AI_LMSTUDIO_URL`, `PDF_AI_LMSTUDIO_PORT`, `PDF_AI_LMSTUDIO_MODEL`, `PDF_AI_LMSTUDIO_TIMEOUT`, `PDF_AI_LMSTUDIO_CHECK_TIMEOUT`, `PDF_AI_LMSTUDIO_ATTEMPTS`; font: `PDF_AI_FONT_REGULAR` / `PDF_AI_FONT_BOLD`.
+
+## Checkpoint / Resume
+- `core/checkpoint.py`: mizanpaj analizi sayfa sayfa `build/checkpoints/<ad>_<parmakizi>.jsonl`'a yazılır (satır bazlı JSON; çökmede yarım son satır yüklenirken yok sayılır).
+- Parmak izi = boyut + mtime + ilk 64KB md5; `allow_ocr` bayrağı kimliğe dahildir. Girdi değişirse checkpoint otomatik geçersiz.
+- Çeviri devam etme `SelfHealingCache` üzerinden; cache artık her sayfada floşlanır (kompakt JSON). Başarılı iş sonunda checkpoint dosyası silinir.
+- CLI: `--fresh` checkpoint'i yok sayar (`resume=False`).
