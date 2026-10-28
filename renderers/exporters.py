@@ -7,10 +7,30 @@ from core.models import ParagraphBlock
 from core.unicode_sanitizer import format_sub_sup_for_render
 
 
+# build/layout_out.txt çıktısı Python tarafında hiçbir ParagraphBlock'a
+# bağlanmadığı için motorun hesapladığı optimizasyonlar şu an kullanılmıyor.
+# Çıktı ileride kutu geometrilerine uygulanacaksa bu bayrak True yapılmalı.
+CPP_LAYOUT_ENGINE_ENABLED = False
+
+
+def find_cpp_engine_path() -> Optional[str]:
+    """Platforma göre AiEngine çalıştırılabilirini bulur; yoksa None döner."""
+    candidates = ["AiEngine.exe", "AiEngine"] if os.name != "nt" else ["AiEngine.exe"]
+    for name in candidates:
+        path = os.path.join("build", name)
+        if os.path.exists(path):
+            return path
+    return None
+
+
 def run_cpp_layout_engine(
     all_paragraphs: List[ParagraphBlock],
     font_validator: Optional[fitz.Font]
 ) -> None:
+    if not CPP_LAYOUT_ENGINE_ENABLED:
+        print("\n2. [C++ AiEngine] Bu surumde pasif (cikti henuz Python'a baglanmadi); Python Auto-Fit kullanilacak.")
+        return
+
     layout_in = os.path.join("build", "layout_in.txt")
     layout_out = os.path.join("build", "layout_out.txt")
     os.makedirs("build", exist_ok=True)
@@ -30,8 +50,8 @@ def run_cpp_layout_engine(
                 f"{clean_en}|{clean_tr}\n"
             )
 
-    engine_path = os.path.join("build", "AiEngine.exe")
-    if os.path.exists(engine_path):
+    engine_path = find_cpp_engine_path()
+    if engine_path:
         print("\n2. [C++ AiEngine] OpenMP ile paralel kutu/font optimizasyonu yapiliyor...")
         subprocess.run([engine_path, layout_in, layout_out], check=False)
 

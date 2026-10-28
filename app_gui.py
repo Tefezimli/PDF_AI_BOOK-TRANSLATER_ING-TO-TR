@@ -403,9 +403,9 @@ class EnterpriseTranslatorStudio:
             threads = max(1, (os.cpu_count() or 4) - 1)
             self.badge_hw.config(text=f"⚡ CPU ({threads} Thread)", fg=ACCENT_AMBER)
 
-        # C++ OpenMP Motoru rozeti
-        cpp_exe = os.path.join("build", "AiEngine.exe")
-        if os.path.exists(cpp_exe):
+        # C++ OpenMP Motoru rozeti (varsayılan olarak pasif: çıktısı henüz Python'a bağlı değil)
+        from renderers.exporters import CPP_LAYOUT_ENGINE_ENABLED, find_cpp_engine_path
+        if CPP_LAYOUT_ENGINE_ENABLED and find_cpp_engine_path():
             self.badge_cpp.config(text="⚙️ C++17 OpenMP: BAĞLI", fg=ACCENT_GREEN)
         else:
             self.badge_cpp.config(text="⚙️ Python Auto-Fit: AKTİF", fg=ACCENT_BLUE)
