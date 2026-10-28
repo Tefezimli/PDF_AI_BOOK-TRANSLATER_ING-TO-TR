@@ -74,11 +74,23 @@ class SelfHealingCache:
             self.data[key] = clean_val
 
     def save(self) -> bool:
+        """Atomik yazım: önce geçici dosya, sonra os.replace. Çökme anında
+        yarım JSON tüm önbelleği sıfırlamasın."""
+        tmp_path = self.cache_path + ".tmp"
         try:
-            os.makedirs(os.path.dirname(self.cache_path), exist_ok=True)
+            # cache_path dizinsizse ("cache.json") dirname "" olur; os.makedirs("") patlar.
+            d = os.path.dirname(self.cache_path)
+            if d:
+                os.makedirs(d, exist_ok=True)
             # Kompakt JSON: save her sayfada çağrıldığı için indent gereksiz şişme yaratır.
-            with open(self.cache_path, "w", encoding="utf-8") as f:
+            with open(tmp_path, "w", encoding="utf-8") as f:
                 json.dump(self.data, f, ensure_ascii=False)
+            os.replace(tmp_path, self.cache_path)
             return True
         except Exception:
+            try:
+                if os.path.exists(tmp_path):
+                    os.remove(tmp_path)
+            except OSError:
+                pass
             return False

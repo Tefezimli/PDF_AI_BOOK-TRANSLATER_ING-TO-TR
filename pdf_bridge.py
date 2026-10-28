@@ -62,8 +62,11 @@ class ProgressReporter:
 
 def parse_page_selection(spec: str, total_pages: int) -> List[int]:
     """'1-10', '3', '1,2,5-8' biçimindeki 1 tabanlı seçimi sıralı 0 tabanlı
-    sayfa indekslerine çevirir. Aralık dışı sayılar uyarıyla düşürülür."""
+    sayfa indekslerine çevirir. Aralıklar toplam sayfaya clamp'lenir
+    ('1-1000000000' gibi girdiler RAM'i kilitlemesin diye) ve aralık dışı
+    kısım uyarıyla düşürülür."""
     selected = set()
+    had_out_of_range = False
     for part in spec.split(","):
         part = part.strip()
         if not part:
@@ -73,16 +76,24 @@ def parse_page_selection(spec: str, total_pages: int) -> List[int]:
             a, b = int(m.group(1)), int(m.group(2))
             if a > b:
                 raise ValueError(f"Gecersiz sayfa araligi: {part} (baslangic > bitis)")
-            selected.update(range(a - 1, b))
+            if a < 1 or b > total_pages:
+                had_out_of_range = True
+            a, b = max(1, a), min(b, total_pages)
+            if a <= b:
+                selected.update(range(a - 1, b))
         elif part.isdigit():
-            selected.add(int(part) - 1)
+            n = int(part)
+            if 1 <= n <= total_pages:
+                selected.add(n - 1)
+            else:
+                had_out_of_range = True
         else:
             raise ValueError(f"Gecersiz sayfa ifadesi: {part!r}")
 
-    valid = sorted(n for n in selected if 0 <= n < total_pages)
-    dropped = len(selected) - len(valid)
-    if dropped:
-        print(f"[UYARI] {dropped} sayfa aralik disinda oldugu icin secimden dusturuldu (toplam: {total_pages}).")
+    if had_out_of_range:
+        print(f"[UYARI] Secimin bir kismi aralik disinda oldugu icin dusturuldu (toplam sayfa: {total_pages}).")
+
+    valid = sorted(selected)
     if not valid:
         raise ValueError(f"Sayfa secimi bos: {spec!r}")
     return valid
@@ -171,6 +182,15 @@ def run_analysis(
         doc.close()
 
 
+def open_input_document(input_pdf: str):
+    """Şifreli/bozuk girdilerde net hata verir; başarılıysa açık dokümanı döner."""
+    doc = fitz.open(input_pdf)
+    if doc.needs_pass:
+        doc.close()
+        raise ValueError(f"PDF sifreli; once sifresini kaldirin: {input_pdf}")
+    return doc
+
+
 def run_pipeline(
     input_pdf: str,
     output_pdf: str,
@@ -186,7 +206,7 @@ def run_pipeline(
     reporter.emit("stage", stage=1, label="1/4 • Nöral Model Yükleniyor...", percent=8.0)
     translator = UniversalTranslationEngine(device, dtype)
 
-    doc = fitz.open(input_pdf)
+    doc = open_input_document(input_pdf)
     total_pages = len(doc)
     translator.profile_book_domain(doc)
 
@@ -275,8 +295,16 @@ def run_pipeline(
     clean_txt_file = f"{base_name}.txt"
     review_txt_file = f"{base_name}_INCELEME.txt"
     export_copyable_txt_files(all_paragraphs, clean_txt_file, review_txt_file)
-    checkpoint.discard()
-    print("[CHECKPOINT] Islem tamamlandi; ara checkpoint temizlendi.")
+
+    # Kısmi (--pages) koşu, tam-kitap checkpoint'ini silmemeli: bir sonraki tam
+    # koşu analiz edilen sayfalardan devam etsin. Yalnız tüm sayfalar işlendiğinde
+    # checkpoint temizlenir.
+    covered_whole_document = pages is None or len(page_list) >= total_pages
+    if covered_whole_document:
+        checkpoint.discard()
+        print("[CHECKPOINT] Islem tamamlandi; ara checkpoint temizlendi.")
+    else:
+        print("[CHECKPOINT] Kismi kosu: checkpoint korundu (tam kosu kaldigi yerden devam eder).")
     reporter.emit("done", output_pdf=final_pdf_path, clean_txt=clean_txt_file, review_txt=review_txt_file)
 
     print("\n====================================================================")
