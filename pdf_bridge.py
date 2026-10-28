@@ -14,35 +14,14 @@ import transformers
 transformers.logging.set_verbosity_error()
 
 from core import (
-    BoundingBox,
     ParagraphBlock,
-    HAS_TESSERACT,
-    configure_tesseract,
     get_safe_device,
     release_memory,
-    SUPERSCRIPT_MAP,
-    SUBSCRIPT_MAP,
-    GLYPH_FALLBACK_MAP,
-    DeterministicArtifactPurger,
-    normalize_unicode_text,
-    format_sub_sup_for_render,
     select_best_unicode_fonts,
 )
-from extractors import (
-    FormalismAnalyzer,
-    UniversalFormalismQuarantine,
-    SpatialTOCRecognizer,
-    GeometricLayoutEngine,
-)
-from translators import (
-    CACHE_VERSION,
-    SelfHealingCache,
-    DynamicAcademicRegistry,
-    LMStudioBackend,
-    UniversalTranslationEngine,
-)
+from extractors import GeometricLayoutEngine
+from translators import UniversalTranslationEngine
 from renderers import (
-    PageForensicAuditor,
     RedactionPDFRenderer,
     export_copyable_txt_files,
     run_cpp_layout_engine,

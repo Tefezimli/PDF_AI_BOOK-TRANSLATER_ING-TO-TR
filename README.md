@@ -85,6 +85,19 @@ sudo apt install tesseract-ocr            # scanned-page OCR (Debian/Ubuntu; Arc
 
 Turkish glyphs require DejaVu Sans / Liberation Sans / Noto Sans to be present on the system (bundled with most distributions). To force a custom font, set the `PDF_AI_FONT_REGULAR` / `PDF_AI_FONT_BOLD` environment variables.
 
+### Configuration (Environment Variables)
+| Variable | Default | Description |
+| :--- | :--- | :--- |
+| `PDF_AI_LMSTUDIO_URL` | `http://localhost:1234/v1` | LM Studio server address |
+| `PDF_AI_LMSTUDIO_PORT` | `1234` | Port only (when URL is unset) |
+| `PDF_AI_LMSTUDIO_MODEL` | first model | Preferred model from the server list (substring match; e.g. a small 7B model for 8 GB VRAM) |
+| `PDF_AI_LMSTUDIO_TIMEOUT` | `45` | Per-block generation timeout (s) |
+| `PDF_AI_LMSTUDIO_CHECK_TIMEOUT` | `2` | Server detection timeout (s) |
+| `PDF_AI_LMSTUDIO_ATTEMPTS` | `1` | Attempts per block |
+| `PDF_AI_FONT_REGULAR` / `PDF_AI_FONT_BOLD` | auto | Force a Turkish-capable TTF font |
+
+> Developers: the `pytest` suite runs without the heavy AI stack; `ruff check .` for lint.
+
 ---
 
 ## 🔬 Core Engineering Innovations in Pro (v18.0)

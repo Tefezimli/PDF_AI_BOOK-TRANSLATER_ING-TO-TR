@@ -1,0 +1,13 @@
+# Yüksek sinyalli lint: sözdizimi hataları (E9) + pyflakes (F: kullanılmayan
+# import, tanımsız isim, kullanılmayan değişken). Stil kuralları bilinçli olarak
+# kapalı - proje farklı dosyalarda farklı biçimlerde, davranış koruyucu çalışıyoruz.
+line-length = 120
+target-version = "py310"
+exclude = ["build", "ai_env", "__pycache__"]
+
+[lint]
+select = ["E9", "F"]
+
+[lint.per-file-ignores]
+# Paket __init__ dosyaları bilinçli olarak alt modülleri yeniden ihraç eder.
+"__init__.py" = ["F401"]

@@ -1,4 +1,3 @@
-import torch
 from transformers import MarianMTModel, MarianTokenizer
 import numpy as np
 import os

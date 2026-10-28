@@ -85,6 +85,19 @@ sudo apt install tesseract-ocr          # taranmış sayfa OCR'i (Debian/Ubuntu;
 
 Türkçe karakterler için sistemde DejaVu Sans / Liberation Sans / Noto Sans fontlarından biri bulunmalıdır (çoğu dağıtımda hazır gelir). Kendi fontunuzu zorlamak için `PDF_AI_FONT_REGULAR` ve `PDF_AI_FONT_BOLD` ortam değişkenlerini kullanabilirsiniz.
 
+### Yapılandırma (Ortam Değişkenleri)
+| Değişken | Varsayılan | Açıklama |
+| :--- | :--- | :--- |
+| `PDF_AI_LMSTUDIO_URL` | `http://localhost:1234/v1` | LM Studio sunucu adresi |
+| `PDF_AI_LMSTUDIO_PORT` | `1234` | Sadece port (URL verilmediyse) |
+| `PDF_AI_LMSTUDIO_MODEL` | ilk model | Sunucudaki modellerden tercih (alt dizi eşleşmesi; örn. 8 GB VRAM için küçük bir 7B modeli) |
+| `PDF_AI_LMSTUDIO_TIMEOUT` | `45` | Blok başına üretim zaman aşımı (sn) |
+| `PDF_AI_LMSTUDIO_CHECK_TIMEOUT` | `2` | Sunucu algılama zaman aşımı (sn) |
+| `PDF_AI_LMSTUDIO_ATTEMPTS` | `1` | Blok başına deneme sayısı |
+| `PDF_AI_FONT_REGULAR` / `PDF_AI_FONT_BOLD` | otomatik | Türkçe glifli TTF fontunu zorla |
+
+> Geliştiriciler: `pytest` ile test paketi ağır AI kütüphaneleri olmadan koşar; `ruff check .` lint.
+
 ---
 
 ## 🔬 Pro Sürümdeki (v18.0) Temel Mühendislik İnovasyonları
