@@ -22,10 +22,11 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: pip
 
-      # Ağır AI stack'i (torch/transformers/opencv) gerekmez: tests/conftest.py
-      # eksik kütüphaneleri stub'lar. Bu sayede CI saniyeler içinde tamamlanır.
-      - name: Install lightweight test dependencies
-        run: pip install pymupdf numpy pillow pytesseract pytest
+      # Editable kurulum pyproject.toml'un geçerliliğini de sınar; hafif
+      # bağımlılıklar pyproject'tan gelir. Ağır AI stack'i (torch/transformers)
+      # gerekmez: tests/conftest.py eksik kütüphaneleri stub'lar.
+      - name: Install package (editable) and pytest
+        run: pip install -e . pytest
 
       - name: Run test suite
         run: pytest

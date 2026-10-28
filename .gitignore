@@ -6,6 +6,8 @@ __pycache__/
 *.py[cod]
 build/
 out/
+*.egg-info/
+.eggs/
 
 # IDE & Editor Dosyaları
 .vs/

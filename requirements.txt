@@ -1,8 +1,23 @@
-pymupdf>=1.24.0
-torch>=2.2.0
-transformers>=4.40.0
-sentencepiece>=0.2.0
-opencv-python>=4.9.0
-pillow>=10.0.0
-pytesseract>=0.3.10
-numpy>=1.26.0
+# PDF AI Book Translator — çalışma zamanı bağımlılıkları.
+# Sürüm aralıkları bilinen-uyumlu majörleri hedefler; alt sınırlar projenin
+# gerçek gereksinimleri, üst sınırlar API kırılımı olası majörlerdir.
+# Çalışan kurulumunuzdan kesin sürümleri dondurmak için:
+#   pip freeze > requirements.lock.txt
+#
+# NOT: torch kurulumu bu dosyadan da geçebilir fakat Windows sihirbazı
+# (Kurulum_Yap.bat) CUDA uyumlu derlemeyi PyTorch'un kendi indekinden kurar:
+#   pip install torch --index-url https://download.pytorch.org/whl/cu124
+#
+# Yerelde doğrulanan kombinasyon (Arch, Python 3.14): pymupdf 2.0, numpy 2.5,
+# pillow 13.0, pytesseract 0.3.13.
+
+pymupdf>=1.24.0,<3
+pillow>=10.0.0,<14
+numpy>=1.24.0,<3
+pytesseract>=0.3.10,<1
+opencv-python>=4.8.0,<6
+
+# --- Ağır AI stack'i (sihirbaz ya da elle kurulur) ---
+torch>=2.2.0,<3
+transformers>=4.40.0,<5
+sentencepiece>=0.2.0,<1

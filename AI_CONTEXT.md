@@ -23,8 +23,9 @@ Bu depo, akademik ve teknik PDF kitaplarını (Siber Güvenlik, Sayısal Tasarı
 ## Bilinen Durum
 - C++ AiEngine (`renderers.CPP_LAYOUT_ENGINE_ENABLED=False`) varsayılan pasif: `layout_out.txt` çıktısı hiçbir Python koduna bağlanmamıştı; çıktı bağlanana kadar kapalı kalır.
 - Linux/macOS desteklenir (`Baslat.sh`); Windows'ta `Kurulum_Yap.bat` + `Baslat.bat` kullanılır.
-- CI: `.github/workflows/tests.yml` push/PR'da `pytest` + `ruff check .` çalıştırır (torch/cv2'siz, conftest stub'ları sayesinde hızlı).
+- CI: `.github/workflows/tests.yml` push/PR'da editable kurulum + `pytest` + `ruff check .` çalıştırır (torch/cv2'siz, conftest stub'ları sayesinde hızlı).
 - Lint: `ruff.toml` yalnızca E9+F (sözdizimi + pyflakes); stil kuralları kapalıdır.
+- Paketleme: `pyproject.toml` (pdf-ai-translator 18.0.0; `pip install -e .`, konsol komutu `pdfai-translate` → `pdf_bridge.main()`). Ağır AI stack'i bilinçli olarak `[ai]` extra'sında: sihirbaz CUDA torch'u PyTorch indeksten kurar, sert bağımlılık olsaydı çakışırdı. `requirements.txt` sürümleri sınırlı aralıklarla bağlıdır.
 
 ## Yapılandırma ve İlerleme Kanalı
 - `run_pipeline(input_pdf, output_pdf, *, allow_ocr=True, progress_cb=None)`; `progress_cb(event, detail)` olayları: `"stage"` ({stage, label, percent}), `"progress"` ({done, total}), `"done"` ({output_pdf, clean_txt, review_txt}).

@@ -10,8 +10,13 @@ os.environ["HUGGING_FACE_HUB_TOKEN"] = ""
 
 import pymupdf as fitz
 warnings.filterwarnings("ignore")
-import transformers
-transformers.logging.set_verbosity_error()
+try:
+    import transformers
+    transformers.logging.set_verbosity_error()
+except ImportError:
+    # Hafif kurulumda ([ai] extra'sı yok): --help ve argparse yine çalışsın;
+    # çeviri başlarken transformers eksikse motor kendi açık hatasını verir.
+    transformers = None
 
 from core import (
     ParagraphBlock,
@@ -153,7 +158,17 @@ def build_arg_parser() -> argparse.ArgumentParser:
     return parser
 
 
-if __name__ == "__main__":
-    args = build_arg_parser().parse_args()
+def main(argv: List[str] = None) -> int:
+    args = build_arg_parser().parse_args(argv)
+
+    if not os.path.exists(args.input_pdf):
+        print(f"[HATA] Girdi PDF bulunamadi: {args.input_pdf}")
+        return 1
+
     output = args.output_pdf or f"{os.path.splitext(args.input_pdf)[0]}_ULTIMATE.pdf"
     run_pipeline(args.input_pdf, output, allow_ocr=not args.no_ocr)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
