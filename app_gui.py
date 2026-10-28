@@ -84,6 +84,9 @@ class EnterpriseTranslatorStudio:
         self.preview_page_idx = 0
         self.showing_translated_preview = False
         self.tk_preview_img = None
+        # İlerleme kaynağı: motor callback'i ilk olayı gönderince "callback"e döner;
+        # o ana kadar konsol çıktısı kazıması (yedek kanal) yüzdeyi günceller.
+        self._progress_source = "console"
 
         self._configure_ttk_styles()
         self._build_layout()
@@ -519,6 +522,25 @@ class EnterpriseTranslatorStudio:
             self.toggle_preview_btn.config(text="🔄 Türkçe Çıktıyı Göster", fg=ACCENT_GREEN)
             self._load_pdf_preview(in_p, is_translated=False)
 
+    def _on_progress_event(self, event: str, detail: dict):
+        """Motor iş parçacığından gelir; Tk erişimi ana iş parçacığına aktarılır."""
+        self._progress_source = "callback"
+        self.root.after(0, self._apply_progress_event, event, detail)
+
+    def _apply_progress_event(self, event: str, detail: dict):
+        if event == "stage":
+            self.stage_text.set(detail.get("label", ""))
+            self.progress_val.set(float(detail.get("percent", self.progress_val.get())))
+        elif event == "progress":
+            done = int(detail.get("done", 0))
+            total = max(1, int(detail.get("total", 1)))
+            pct = 18.0 + (done / total) * 62.0
+            self.progress_val.set(min(80.0, pct))
+            self.stage_text.set(f"2/4 • Nöral Çeviri: {done} / {total} Blok (%{int((done / total) * 100)})")
+        elif event == "done":
+            self.stage_text.set("TAMAMLANDI • Tüm Çıktılar Hazır")
+            self.progress_val.set(100.0)
+
     def process_console_output(self, text: str):
         self.console_txt.config(state=tk.NORMAL)
         tag = None
@@ -536,32 +558,34 @@ class EnterpriseTranslatorStudio:
         self.console_txt.see(tk.END)
         self.console_txt.config(state=tk.DISABLED)
 
-        clean = text.strip()
-        if "yerel diskten" in clean:
-            self.stage_text.set("1/4 • Nöral Model Yükleniyor...")
-            self.progress_val.set(8.0)
-        elif "Tespit Edilen Toplam" in clean:
-            m = re.search(r':\s*(\d+)', clean)
-            if m:
-                self.total_blocks = max(1, int(m.group(1)))
-            self.stage_text.set(f"2/4 • Akademik Çeviri ({self.total_blocks} Blok)...")
-            self.progress_val.set(18.0)
-        elif "Çeviri İlerlemesi:" in clean:
-            m = re.search(r'(\d+)/(\d+)', clean)
-            if m:
-                done, tot = int(m.group(1)), max(1, int(m.group(2)))
-                pct = 18.0 + (done / tot) * 62.0
-                self.progress_val.set(min(80.0, pct))
-                self.stage_text.set(f"2/4 • Nöral Çeviri: {done} / {tot} Blok (%{int((done/tot)*100)})")
-        elif "[C++ AiEngine]" in clean:
-            self.stage_text.set("3/4 • C++17 OpenMP Mizanpaj Hesaplaması...")
-            self.progress_val.set(85.0)
-        elif "[CERRAHİ RENDER]" in clean:
-            self.stage_text.set("4/4 • Cerrahi PDF Render & TXT Üretimi...")
-            self.progress_val.set(92.0)
-        elif "[BAŞARILI]" in clean:
-            self.stage_text.set("TAMAMLANDI • Tüm Çıktılar Hazır")
-            self.progress_val.set(100.0)
+        # Yüzde/aşama eşlemesi: callback kanalı devredeyse kazıma yalnızca yedek.
+        if self._progress_source == "console":
+            clean = text.strip()
+            if "yerel diskten" in clean:
+                self.stage_text.set("1/4 • Nöral Model Yükleniyor...")
+                self.progress_val.set(8.0)
+            elif "Tespit Edilen Toplam" in clean:
+                m = re.search(r':\s*(\d+)', clean)
+                if m:
+                    self.total_blocks = max(1, int(m.group(1)))
+                self.stage_text.set(f"2/4 • Akademik Çeviri ({self.total_blocks} Blok)...")
+                self.progress_val.set(18.0)
+            elif "Çeviri İlerlemesi:" in clean:
+                m = re.search(r'(\d+)/(\d+)', clean)
+                if m:
+                    done, tot = int(m.group(1)), max(1, int(m.group(2)))
+                    pct = 18.0 + (done / tot) * 62.0
+                    self.progress_val.set(min(80.0, pct))
+                    self.stage_text.set(f"2/4 • Nöral Çeviri: {done} / {tot} Blok (%{int((done/tot)*100)})")
+            elif "[C++ AiEngine]" in clean:
+                self.stage_text.set("3/4 • C++17 OpenMP Mizanpaj Hesaplaması...")
+                self.progress_val.set(85.0)
+            elif "[CERRAHİ RENDER]" in clean:
+                self.stage_text.set("4/4 • Cerrahi PDF Render & TXT Üretimi...")
+                self.progress_val.set(92.0)
+            elif "[BAŞARILI]" in clean:
+                self.stage_text.set("TAMAMLANDI • Tüm Çıktılar Hazır")
+                self.progress_val.set(100.0)
 
     def _update_clock(self):
         if not self.is_running:
@@ -602,7 +626,7 @@ class EnterpriseTranslatorStudio:
 
     def _worker_task(self, in_p: str, out_p: str):
         try:
-            pdf_bridge.run_pipeline(in_p, out_p)
+            pdf_bridge.run_pipeline(in_p, out_p, progress_cb=self._on_progress_event)
             self.root.after(0, self._on_pipeline_complete, out_p)
         except Exception as e:
             print(f"\n[KRİTİK HATA] {e}\n")

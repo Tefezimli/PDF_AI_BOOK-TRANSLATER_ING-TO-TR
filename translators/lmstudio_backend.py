@@ -1,24 +1,94 @@
 import json
+import os
 import urllib.request
-from typing import Optional
+from typing import List, Optional
+
+DEFAULT_BASE_URL = "http://localhost:1234/v1"
+DEFAULT_CHECK_TIMEOUT = 2.0
+DEFAULT_REQUEST_TIMEOUT = 45.0
+DEFAULT_ATTEMPTS = 1
+
+
+def _resolve_base_url(explicit: Optional[str]) -> str:
+    """Öncelik: açık parametre > PDF_AI_LMSTUDIO_URL > PDF_AI_LMSTUDIO_PORT > varsayılan."""
+    if explicit:
+        return explicit.rstrip("/")
+    env_url = os.environ.get("PDF_AI_LMSTUDIO_URL")
+    if env_url:
+        return env_url.rstrip("/")
+    env_port = os.environ.get("PDF_AI_LMSTUDIO_PORT")
+    if env_port:
+        return f"http://localhost:{env_port}/v1"
+    return DEFAULT_BASE_URL
+
+
+def _env_float(env_key: str, default: float) -> float:
+    raw = os.environ.get(env_key)
+    if not raw:
+        return default
+    try:
+        return max(1.0, float(raw))
+    except ValueError:
+        return default
+
+
+def _env_int(env_key: str, default: int) -> int:
+    raw = os.environ.get(env_key)
+    if not raw:
+        return default
+    try:
+        return max(1, int(raw))
+    except ValueError:
+        return default
 
 
 class LMStudioBackend:
-    def __init__(self, base_url: str = "http://localhost:1234/v1", domain_label: str = "Bilgisayar ve Donanım Mühendisliği"):
-        self.base_url = base_url.rstrip("/")
+    """Yerel LM Studio (OpenAPI uyumlu) sunucusunun istemcisi.
+
+    Ortam değişkenleriyle yapılandırılabilir:
+      - PDF_AI_LMSTUDIO_URL     tam adres (örn. http://localhost:1234/v1)
+      - PDF_AI_LMSTUDIO_PORT    sadece port (varsayılan 1234)
+      - PDF_AI_LMSTUDIO_MODEL   sunucu birden çok model yüklüyse tercih (alt dizi eşleşmesi)
+      - PDF_AI_LMSTUDIO_TIMEOUT        üretim (chat) zaman aşımı sn [45]
+      - PDF_AI_LMSTUDIO_CHECK_TIMEOUT   sunucu algılama zaman aşımı sn [2]
+      - PDF_AI_LMSTUDIO_ATTEMPTS        blok başına deneme sayısı [1]
+    """
+
+    def __init__(
+        self,
+        base_url: Optional[str] = None,
+        domain_label: str = "Bilgisayar ve Donanım Mühendisliği",
+        check_timeout: Optional[float] = None,
+        request_timeout: Optional[float] = None,
+        max_attempts: Optional[int] = None,
+    ):
+        self.base_url = _resolve_base_url(base_url)
         self.domain_label = domain_label
+        self.preferred_model: Optional[str] = os.environ.get("PDF_AI_LMSTUDIO_MODEL") or None
+        self.check_timeout = check_timeout if check_timeout else _env_float("PDF_AI_LMSTUDIO_CHECK_TIMEOUT", DEFAULT_CHECK_TIMEOUT)
+        self.request_timeout = request_timeout if request_timeout else _env_float("PDF_AI_LMSTUDIO_TIMEOUT", DEFAULT_REQUEST_TIMEOUT)
+        self.max_attempts = max_attempts if max_attempts else _env_int("PDF_AI_LMSTUDIO_ATTEMPTS", DEFAULT_ATTEMPTS)
         self.model_id: Optional[str] = None
         self.available: bool = self._check_server()
+
+    def _pick_model(self, models: List[dict]) -> str:
+        if self.preferred_model:
+            needle = self.preferred_model.lower()
+            for m in models:
+                mid = str(m.get("id", ""))
+                if needle in mid.lower():
+                    return mid
+        return models[0].get("id", "local-model")
 
     def _check_server(self) -> bool:
         try:
             req = urllib.request.Request(f"{self.base_url}/models", method="GET")
-            with urllib.request.urlopen(req, timeout=1.8) as resp:
+            with urllib.request.urlopen(req, timeout=self.check_timeout) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
                 models = data.get("data", [])
                 if models:
-                    self.model_id = models[0].get("id", "local-model")
-                    print(f"[LM STUDIO AKTIF] Yerel LLM Sunucusu Algilandi! Aktif Model: {self.model_id}")
+                    self.model_id = self._pick_model(models)
+                    print(f"[LM STUDIO AKTIF] Yerel LLM Sunucusu Algilandi ({self.base_url})! Aktif Model: {self.model_id}")
                     return True
         except Exception:
             pass
@@ -54,19 +124,24 @@ class LMStudioBackend:
             "max_tokens": 1024,
             "stream": False
         }
-        try:
-            req = urllib.request.Request(
-                f"{self.base_url}/chat/completions",
-                data=json.dumps(payload).encode("utf-8"),
-                headers={"Content-Type": "application/json"},
-                method="POST"
-            )
-            with urllib.request.urlopen(req, timeout=45.0) as resp:
-                result = json.loads(resp.read().decode("utf-8"))
-                content = result["choices"][0]["message"]["content"].strip()
-                if content:
-                    return content
-        except Exception as exc:
-            print(f"[LM STUDIO UYARISI] Yerel LLM yanit vermedi ({exc}), Opus-MT yedegine geciliyor...")
-            self.available = False
+
+        last_error: Optional[Exception] = None
+        for _ in range(self.max_attempts):
+            try:
+                req = urllib.request.Request(
+                    f"{self.base_url}/chat/completions",
+                    data=json.dumps(payload).encode("utf-8"),
+                    headers={"Content-Type": "application/json"},
+                    method="POST"
+                )
+                with urllib.request.urlopen(req, timeout=self.request_timeout) as resp:
+                    result = json.loads(resp.read().decode("utf-8"))
+                    content = result["choices"][0]["message"]["content"].strip()
+                    if content:
+                        return content
+            except Exception as exc:
+                last_error = exc
+
+        print(f"[LM STUDIO UYARISI] Yerel LLM yanit vermedi ({last_error}), Opus-MT yedegine geciliyor...")
+        self.available = False
         return None
