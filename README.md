@@ -1,4 +1,4 @@
-# PDF AI Book & Slide Translator (EN -> TR) 🚀
+6# PDF AI Book & Slide Translator (EN -> TR) 🚀
 
 <p align="center">
   <a href="README.md"><b>🌐 English Documentation</b></a> •
@@ -129,5 +129,3 @@ run_pipeline(
 ## 📜 License
 
 This project is open-source under the [MIT License](LICENSE).
-
-deneme
