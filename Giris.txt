@@ -7,13 +7,27 @@
    - Kurulum tamamlandiktan sonra: "Baslat.bat" dosyasina cift tiklayin.
    - Karsiniza modern grafik arayuz (GUI) acilacaktir!
 
-2. KOMUT SATIRINDAN MANUEL CALISTIRMA (Windows):
+2. EN KOLAY YONTEM (Linux / macOS):
+   - Bagimliliklari kurun:
+       python3 -m venv ai_env
+       ai_env/bin/pip install -r requirements.txt
+     Tesseract OCR icin: sudo apt install tesseract-ocr (Debian/Ubuntu)
+       veya sudo pacman -S tesseract (Arch)
+   - Sonra: ./Baslat.sh
+   - Komut satiri modu icin: ./Baslat.sh --cli kitap.pdf -o cikti.pdf
+
+3. KOMUT SATIRINDAN MANUEL CALISTIRMA (Windows):
    .\ai_env\Scripts\activate
    python app_gui.py
 
-3. KOMUT SATIRINDAN MANUEL CALISTIRMA (Linux / macOS):
+4. KOMUT SATIRINDAN MANUEL CALISTIRMA (Linux / macOS):
    source ai_env/bin/activate
    python app_gui.py
 
-4. ARACISIZ DIREKT CEVIRI (Grafik Arayuzsuz):
-   python pdf_bridge.py
+5. ARACISIZ DIREKT CEVIRI (Grafik Arayuzsuz):
+   python pdf_bridge.py giris.pdf -o cikti.pdf [--no-ocr]
+
+6. FONT NOTU (Linux/macOS):
+   Turkce karakterler icin DejaVu Sans / Liberation Sans / Noto Sans
+   fontlarindan biri sisteminizde olmalidir (cogu dagitimda vardir).
+   Kendi fontunuzu zorlamak icin: PDF_AI_FONT_REGULAR / PDF_AI_FONT_BOLD

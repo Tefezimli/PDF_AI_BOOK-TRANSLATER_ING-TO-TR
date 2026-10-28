@@ -1,5 +1,6 @@
 import re
 import os
+import importlib.util
 from typing import Tuple, Dict, List, Optional
 import pymupdf as fitz
 
@@ -180,23 +181,61 @@ def format_sub_sup_for_render(text: str, font_obj: Optional[fitz.Font] = None) -
 
     return DeterministicArtifactPurger.sanitize_stream(replace_corrupted_brackets(res))
 
-def select_best_unicode_fonts() -> Tuple[str, str, Optional[fitz.Font]]:
-    turkish_test_chars = "\u00e7\u011f\u015f\u0131\u00f6\u00fc\u0130\u015e\u011e"
-    turkish_codepoints = [ord(c) for c in turkish_test_chars]
-    candidates = [
-        (r"C:\Windows\Fonts\segoeui.ttf", r"C:\Windows\Fonts\segoeuib.ttf"),
-        (r"C:\Windows\Fonts\calibri.ttf", r"C:\Windows\Fonts\calibrib.ttf"),
-        (r"C:\Windows\Fonts\arial.ttf", r"C:\Windows\Fonts\arialbd.ttf"),
-    ]
-    for reg, bold in candidates:
-        if os.path.exists(reg):
-            try:
-                f_test = fitz.Font(fontfile=reg)
-                if all(f_test.has_glyph(cp) for cp in turkish_codepoints):
-                    return reg, (bold if os.path.exists(bold) else reg), f_test
-            except Exception:
-                continue
+# Türkçe gliflerini (ç ğ ı ö ş ü İ Ş Ğ) kapsadığı bilinen, platform bağımsız
+# font adayları; Türkçe glif doğrulamasından geçen ilk çift kullanılır.
+FONT_CANDIDATES: List[Tuple[str, str]] = [
+    # Windows
+    (r"C:\Windows\Fonts\segoeui.ttf", r"C:\Windows\Fonts\segoeuib.ttf"),
+    (r"C:\Windows\Fonts\calibri.ttf", r"C:\Windows\Fonts\calibrib.ttf"),
+    (r"C:\Windows\Fonts\arial.ttf", r"C:\Windows\Fonts\arialbd.ttf"),
+    # Linux (Debian/Fedora/Arch dizin düzenleri)
+    ("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"),
+    ("/usr/share/fonts/dejavu/DejaVuSans.ttf", "/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf"),
+    ("/usr/share/fonts/TTF/DejaVuSans.ttf", "/usr/share/fonts/TTF/DejaVuSans-Bold.ttf"),
+    ("/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf", "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf"),
+    ("/usr/share/fonts/liberation/LiberationSans-Regular.ttf", "/usr/share/fonts/liberation/LiberationSans-Bold.ttf"),
+    ("/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf", "/usr/share/fonts/truetype/noto/NotoSans-Bold.ttf"),
+    ("/usr/share/fonts/truetype/freefont/FreeSans.ttf", "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf"),
+    # macOS
+    ("/System/Library/Fonts/Supplemental/Arial.ttf", "/System/Library/Fonts/Supplemental/Arial Bold.ttf"),
+    ("/Library/Fonts/Arial.ttf", "/Library/Fonts/Arial Bold.ttf"),
+]
 
-    fallback_reg = r"C:\Windows\Fonts\arial.ttf"
-    f_obj = fitz.Font(fontfile=fallback_reg) if os.path.exists(fallback_reg) else None
-    return fallback_reg, r"C:\Windows\Fonts\arialbd.ttf", f_obj
+
+def _bundled_font_candidates() -> List[Tuple[str, str]]:
+    """pip ortamlarında matplotlib ile gelen DejaVu fontlarını yedek aday olarak ekler."""
+    extra: List[Tuple[str, str]] = []
+    spec = importlib.util.find_spec("matplotlib")
+    if spec and spec.submodule_search_locations:
+        for parent in spec.submodule_search_locations:
+            base = os.path.join(str(parent), "mpl-data", "fonts", "ttf")
+            extra.append((os.path.join(base, "DejaVuSans.ttf"), os.path.join(base, "DejaVuSans-Bold.ttf")))
+    return extra
+
+
+def select_best_unicode_fonts() -> Tuple[str, str, Optional[fitz.Font]]:
+    turkish_codepoints = [ord(c) for c in "çğşıöüİŞĞ"]
+
+    # Kullanıcı isteğe bağlı olarak kendi fontunu zorlayabilir (PDF_AI_FONT_REGULAR/BOLD).
+    env_reg = os.environ.get("PDF_AI_FONT_REGULAR")
+    if env_reg and os.path.exists(env_reg):
+        env_bold = os.environ.get("PDF_AI_FONT_BOLD") or env_reg
+        try:
+            f_env = fitz.Font(fontfile=env_reg)
+            if all(f_env.has_glyph(cp) for cp in turkish_codepoints):
+                return env_reg, env_bold, f_env
+        except Exception:
+            pass
+
+    for reg, bold in FONT_CANDIDATES + _bundled_font_candidates():
+        if not os.path.exists(reg):
+            continue
+        try:
+            f_test = fitz.Font(fontfile=reg)
+            if all(f_test.has_glyph(cp) for cp in turkish_codepoints):
+                return reg, (bold if os.path.exists(bold) else reg), f_test
+        except Exception:
+            continue
+
+    # Hiçbir font bulunamazsa renderer dahili 'helv' fontuna düşer.
+    return "", "", None

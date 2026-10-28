@@ -92,7 +92,10 @@ def run_pipeline(input_pdf: str, output_pdf: str, *, allow_ocr: bool = True) -> 
             release_memory(device)
 
     font_reg_path, font_bold_path, font_validator = select_best_unicode_fonts()
-    print(f"-> Aktif Font ve Turkce Glif Kalkani: {os.path.basename(font_reg_path)}")
+    if font_reg_path:
+        print(f"-> Aktif Font ve Turkce Glif Kalkani: {os.path.basename(font_reg_path)}")
+    else:
+        print("[UYARI] Turkce glifli sistem fontu bulunamadi; dahili 'helv' fontu kullanilacak.")
 
     run_cpp_layout_engine(all_paragraphs, font_validator)
 

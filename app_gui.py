@@ -4,6 +4,7 @@ import sys
 import json
 import time
 import ctypes
+import subprocess
 import threading
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
@@ -662,8 +663,14 @@ class EnterpriseTranslatorStudio:
 
     def _open_external_pdf(self):
         out_p = self.output_pdf.get().strip()
-        if os.path.exists(out_p):
+        if not os.path.exists(out_p):
+            return
+        if os.name == "nt":
             os.startfile(out_p)
+        elif sys.platform == "darwin":
+            subprocess.Popen(["open", out_p])
+        else:
+            subprocess.Popen(["xdg-open", out_p])
 
     def _copy_all_clean_txt(self):
         content = self.clean_txt_view.get("1.0", tk.END).strip()

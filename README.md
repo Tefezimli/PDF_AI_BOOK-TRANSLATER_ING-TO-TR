@@ -72,6 +72,19 @@ Double-click `Baslat.bat`.
 * If LM Studio is not active, it gracefully falls back to the built-in offline MarianMT neural engine.
 * Select your PDF and click **"🚀 ÇEVİRİYİ BAŞLAT"**!
 
+### Linux / macOS
+No Windows installer needed:
+
+```bash
+python3 -m venv ai_env
+ai_env/bin/pip install -r requirements.txt
+sudo apt install tesseract-ocr            # scanned-page OCR (Debian/Ubuntu; Arch: sudo pacman -S tesseract)
+./Baslat.sh                               # graphical interface
+./Baslat.sh --cli book.pdf -o output.pdf  # command-line translation
+```
+
+Turkish glyphs require DejaVu Sans / Liberation Sans / Noto Sans to be present on the system (bundled with most distributions). To force a custom font, set the `PDF_AI_FONT_REGULAR` / `PDF_AI_FONT_BOLD` environment variables.
+
 ---
 
 ## 🔬 Core Engineering Innovations in Pro (v18.0)
@@ -114,6 +127,12 @@ run_pipeline(
     input_pdf="academic_textbook.pdf",
     output_pdf="academic_textbook_TR.pdf"
 )
+```
+
+Or straight from the terminal:
+
+```bash
+python pdf_bridge.py academic_textbook.pdf -o academic_textbook_TR.pdf [--no-ocr]
 ```
 
 ---

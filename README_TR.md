@@ -72,6 +72,19 @@ En yüksek akademik ve teknik çeviri kalitesi için (700+ sayfalık mühendisli
 * Eğer LM Studio açık değilse, sistem otomatik olarak yerel MarianMT motoruna geçerek kesintisiz çalışmaya devam eder.
 * İngilizce PDF'inizi seçin ve **"🚀 ÇEVİRİYİ BAŞLAT"** butonuna basın!
 
+### Linux / macOS
+Windows kurulum sihirbazına gerek yoktur:
+
+```bash
+python3 -m venv ai_env
+ai_env/bin/pip install -r requirements.txt
+sudo apt install tesseract-ocr          # taranmış sayfa OCR'i (Debian/Ubuntu; Arch: sudo pacman -S tesseract)
+./Baslat.sh                             # grafik arayüz
+./Baslat.sh --cli kitap.pdf -o cikti.pdf  # komut satırı çevirisi
+```
+
+Türkçe karakterler için sistemde DejaVu Sans / Liberation Sans / Noto Sans fontlarından biri bulunmalıdır (çoğu dağıtımda hazır gelir). Kendi fontunuzu zorlamak için `PDF_AI_FONT_REGULAR` ve `PDF_AI_FONT_BOLD` ortam değişkenlerini kullanabilirsiniz.
+
 ---
 
 ## 🔬 Pro Sürümdeki (v18.0) Temel Mühendislik İnovasyonları
