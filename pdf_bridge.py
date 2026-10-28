@@ -194,7 +194,7 @@ def run_pipeline(
     reporter.emit("done", output_pdf=final_pdf_path, clean_txt=clean_txt_file, review_txt=review_txt_file)
 
     print("\n====================================================================")
-    print("[BASARILI] Moduler Evrensel Motor (v18.0) Ciktilari Uretildi:")
+    print("[BASARILI] Moduler Evrensel Motor (v18.1) Ciktilari Uretildi:")
     print(f"  1. Kusursuz PDF Dosyasi        : {final_pdf_path}")
     print(f"  2. Temiz Turkce TXT Dosyasi    : {clean_txt_file}")
     print(f"  3. Karsilastirmali Inceleme TXT: {review_txt_file}")

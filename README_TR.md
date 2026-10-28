@@ -5,7 +5,7 @@
   <a href="README_TR.md"><b>🇹🇷 Türkçe Dokümantasyon</b></a>
 </p>
 
-[![Sürüm: v18.0 Pro](https://img.shields.io/badge/S%C3%BCr%C3%BCm-v18.0%20Pro%20Ultimate-7C3AED.svg?style=flat)](https://github.com/Tefezimli/PDF_AI_BOOK-TRANSLATER_ING-TO-TR)
+[![Sürüm: v18.1 Pro](https://img.shields.io/badge/S%C3%BCr%C3%BCm-v18.1%20Pro%20Ultimate-7C3AED.svg?style=flat)](https://github.com/Tefezimli/PDF_AI_BOOK-TRANSLATER_ING-TO-TR)
 [![Sürümler: Lite & Pro](https://img.shields.io/badge/S%C3%BCr%C3%BCmler-Lite%20%7C%20Pro-0284C7.svg?style=flat)](#-s%C3%BCr%C3%BCmler-lite-vs-pro-ultimate)
 [![LLM: Qwen2.5 14B & MarianMT](https://img.shields.io/badge/LLM-Qwen2.5%2014B%20%2B%20MarianMT-F59E0B.svg?style=flat)](https://huggingface.co/Qwen/Qwen2.5-14B-Instruct)
 [![Programlama: Python 3.10+](https://img.shields.io/badge/Python-3.10%20--%203.14-3776AB.svg?style=flat&logo=python)](https://www.python.org/)
