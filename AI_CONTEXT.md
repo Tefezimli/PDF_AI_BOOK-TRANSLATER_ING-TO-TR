@@ -8,9 +8,9 @@ Bu depo, akademik ve teknik PDF kitaplarını (Siber Güvenlik, Sayısal Tasarı
 
 Bu makinede torch/transformers/opencv KURULU DEĞİLDİR (GUI/LLM koşusu yapılamaz); saf mantık tam test edilir:
 ```bash
-# 1) Test venv'i (yoksa): python3 -m venv /tmp/pdfai_testenv
-#    /tmp/pdfai_testenv/bin/pip install pymupdf numpy pillow pytesseract pytest ruff
-/tmp/pdfai_testenv/bin/python -m pytest          # 106 test, ~1 sn (torch/cv2 stub'lanır)
+# 1) Test venv'i (yoksa): ./scripts/setup_testenv.sh  [hedef:/tmp/pdfai_testenv]
+scripts/setup_testenv.sh'ın kurduğu ortamla aynı komutlar:
+/tmp/pdfai_testenv/bin/python -m pytest          # 147 test, ~1 sn (torch/cv2 stub'lanır)
 /tmp/pdfai_testenv/bin/python -m ruff check .    # E9+F (sözdizimi+pyflakes)
 python3 -m py_compile <değişen dosyalar>         # hızlı derleme kontrolü
 # Hafif kurulum kontrolü (torch'suz ortamda paket import edilebilir mi):
@@ -67,3 +67,4 @@ Dikkat: pytest'i boru ile koşarken `set -o pipefail` kullanın; commit öncesi 
 - `--eval` (`translators/eval_harness.py`): 12 altın vaka; offline mod deterministik zinciri (ön-normalizasyon→maske→onarım→temizlik) sınar, LM Studio açıksa canlı LLM'i de (maske kalıntısı, yasak terim, uzunluk oranı) sınar. Başarısız vaka = çıkış kodu 1.
 - `--pages 1-10` (`parse_page_selection`): 1 tabanlı seçim; seçilmeyen sayfalar çıktıda orijinal kalır; varsayılan çıktı adı `<ad>_p1-10_ULTIMATE.pdf` olur. `run_pipeline(..., pages=[0 tabanlı indeksler])`.
 - GUI "⚙️ Çeviri Ayarları" sekmesi: LM Studio URL/port/model, OCR, sayfa aralığı, sıfırdan başla — `core/user_settings.py` üzerinden `build/gui_settings.json`'da kalıcı; başlat anında toplanır, env'e uygulanır ve run_pipeline kwarg'larına geçer.
+- Kalıcı kök: `core/paths.build_dir()` — tüm cache/checkpoint/ayar yolları `PDF_AI_WORKDIR` env'i ile (varsayılan `build/`) tek yerden çözülür; CWD bağımsızdır.

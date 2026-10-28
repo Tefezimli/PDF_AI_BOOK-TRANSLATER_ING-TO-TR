@@ -15,6 +15,7 @@ import torch
 
 # Mevcut çeviri motorumuzu hiçbir değişikliğe uğratmadan içeri aktarıyoruz
 import pdf_bridge
+from core.paths import build_dir
 from core.user_settings import apply_lmstudio_env, load_settings, save_settings
 
 # Windows High-DPI (Bulanık görüntü önleyici, 1080p/2K/4K keskinlik kilidi)
@@ -490,7 +491,7 @@ class EnterpriseTranslatorStudio:
             self.badge_cpp.config(text="⚙️ Python Auto-Fit: AKTİF", fg=ACCENT_BLUE)
 
         # ÇEVİRİ ÖNBELLEĞİ (CACHE) SAYACI VE DOĞRULAMA
-        cache_file = os.path.join("build", "translation_cache.json")
+        cache_file = build_dir("translation_cache.json")
         if os.path.exists(cache_file):
             try:
                 with open(cache_file, "r", encoding="utf-8") as f:
@@ -804,7 +805,7 @@ class EnterpriseTranslatorStudio:
             messagebox.showinfo("Kopyalandı", "Tüm Türkçe metin ve formüller panoya kopyalandı (Ctrl+V ile yapıştırabilirsiniz).")
 
     def _clear_translation_cache(self):
-        cache_file = os.path.join("build", "translation_cache.json")
+        cache_file = build_dir("translation_cache.json")
         if os.path.exists(cache_file):
             try:
                 os.remove(cache_file)

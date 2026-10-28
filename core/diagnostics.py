@@ -14,6 +14,8 @@ import sys
 import urllib.request
 from typing import Callable, List, Tuple
 
+from core.paths import build_dir
+
 # (durum, etiket) çifti; durum: OK | WARN | FAIL
 CheckResult = Tuple[str, str, str]
 
@@ -88,7 +90,8 @@ def check_lmstudio(check_timeout: float = 2.0) -> CheckResult:
         )
 
 
-def check_translation_cache(cache_path: str = os.path.join("build", "translation_cache.json")) -> CheckResult:
+def check_translation_cache(cache_path: str = None) -> CheckResult:
+    cache_path = cache_path or build_dir("translation_cache.json")
     if not os.path.exists(cache_path):
         return OK, "Ceviri onbellegi", "bos (ilk ceviriler olusturacak)"
     try:
@@ -105,7 +108,8 @@ def check_translation_cache(cache_path: str = os.path.join("build", "translation
         return WARN, "Ceviri onbellegi", f"okunamadi: {exc}"
 
 
-def check_leftover_checkpoints(ckpt_dir: str = os.path.join("build", "checkpoints")) -> CheckResult:
+def check_leftover_checkpoints(ckpt_dir: str = None) -> CheckResult:
+    ckpt_dir = ckpt_dir or build_dir("checkpoints")
     if not os.path.isdir(ckpt_dir):
         return OK, "Checkpoint klasoru", "temiz"
     files = [f for f in os.listdir(ckpt_dir) if f.endswith(".jsonl")]

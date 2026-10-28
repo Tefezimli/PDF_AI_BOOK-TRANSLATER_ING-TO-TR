@@ -18,9 +18,10 @@ import os
 from typing import Any, Dict, List
 
 from core.models import BoundingBox, ParagraphBlock
+from core.paths import build_dir
 
 CHECKPOINT_VERSION = 1
-CHECKPOINT_DIR = os.path.join("build", "checkpoints")
+CHECKPOINT_DIR = build_dir("checkpoints")
 
 
 def document_fingerprint(input_pdf: str) -> Dict[str, Any]:
