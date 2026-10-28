@@ -2,7 +2,7 @@
 import pytest
 
 import pdf_bridge
-from pdf_bridge import parse_page_selection
+from pdf_bridge import is_full_page_selection, parse_page_selection
 
 
 def test_single_page():
@@ -29,6 +29,12 @@ def test_full_page_count_selectable():
     assert parse_page_selection("1-10", 10) == list(range(10))
 
 
+def test_huge_range_clamped_without_oom():
+    # '1-1000000000' milyarlarca int üreterek RAM'i kilitlememeli;
+    # anında toplam sayfaya clamp'lenip dokümanın tamamını döndürmeli (< 1 sn).
+    assert parse_page_selection("1-1000000000", 10) == list(range(10))
+
+
 @pytest.mark.parametrize("bad", ["", "0", "1-", "a", "3-1", "2-"])
 def test_invalid_specs_raise(bad):
     with pytest.raises(ValueError):
@@ -37,6 +43,22 @@ def test_invalid_specs_raise(bad):
 
 def test_trailing_comma_tolerated():
     assert parse_page_selection("1,,", 10) == [0]
+
+
+# --- is_full_page_selection: kısmi koşuda checkpoint silinme kararı ---
+def test_is_full_page_selection_true_for_all_pages():
+    assert is_full_page_selection([0, 1, 2], 3) is True
+    assert is_full_page_selection(list(range(5)), 5) is True
+
+
+def test_is_full_page_selection_false_for_partial():
+    assert is_full_page_selection([0, 1], 3) is False
+    assert is_full_page_selection([], 3) is False
+    assert is_full_page_selection([0, 1, 2], 4) is False
+
+
+def test_is_full_page_selection_ignores_order():
+    assert is_full_page_selection([2, 0, 1], 3) is True
 
 
 def test_main_passes_pages_to_pipeline(tmp_path, monkeypatch):

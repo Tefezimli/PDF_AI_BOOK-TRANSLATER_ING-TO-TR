@@ -7,6 +7,9 @@ from typing import List, Dict
 # pyproject.toml'daki version alanıyla senkron tutulmalı (sürümlerde).
 __version__ = "18.1.0"
 
+# Motor sürüm etiketi: CLI çıktı mesajlarında kullanılır (pyproject ile uyumlu).
+ENGINE_VERSION = "18.1.0"
+
 os.environ["HF_HUB_DISABLE_TELEMETRY"] = "1"
 os.environ["HF_HUB_DISABLE_IMPLICIT_TOKEN"] = "1"
 os.environ["HF_TOKEN"] = ""
@@ -115,7 +118,7 @@ def run_analysis(
     from extractors import GeometricLayoutEngine
 
     layout_engine = GeometricLayoutEngine(allow_ocr=allow_ocr)
-    doc = fitz.open(input_pdf)
+    doc = open_input_document(input_pdf)
     try:
         total_pages = len(doc)
         page_list = sorted(set(pages)) if pages is not None else list(range(total_pages))
@@ -182,13 +185,34 @@ def run_analysis(
         doc.close()
 
 
+class PDFInputError(RuntimeError, ValueError):
+    """Bozuk veya şifreli PDF girdisi hatası.
+
+    RuntimeError olarak ele alınır (main() yakalayıp temiz mesaj basar);
+    ValueError kalıtımı, hatayı ValueError sanan eski çağrıcıları kırmamak
+    için geriye dönük uyumluluk amacı taşır.
+    """
+
+
 def open_input_document(input_pdf: str):
     """Şifreli/bozuk girdilerde net hata verir; başarılıysa açık dokümanı döner."""
-    doc = fitz.open(input_pdf)
+    try:
+        doc = fitz.open(input_pdf)
+    except Exception as exc:
+        raise PDFInputError(f"PDF acilamadi veya bozuk: {input_pdf} ({exc})") from exc
     if doc.needs_pass:
         doc.close()
-        raise ValueError(f"PDF sifreli; once sifresini kaldirin: {input_pdf}")
+        raise PDFInputError("PDF sifreli/korumali; sifresiz bir kopya ile tekrar deneyin.")
     return doc
+
+
+def is_full_page_selection(page_list: List[int], total_pages: int) -> bool:
+    """Sayfa seçimi belgenin TÜM sayfalarını kapsıyorsa True döner.
+
+    Checkpoint yalnız bu koşulda silinmeli; kısmi (--pages) koşularında
+    ara checkpoint korunur ki sonraki tam koşu kaldığı yerden devam etsin.
+    """
+    return set(page_list) == set(range(total_pages))
 
 
 def run_pipeline(
@@ -207,89 +231,96 @@ def run_pipeline(
     translator = UniversalTranslationEngine(device, dtype)
 
     doc = open_input_document(input_pdf)
-    total_pages = len(doc)
-    translator.profile_book_domain(doc)
-
-    all_paragraphs: List[ParagraphBlock] = []
-    pages_blocks_map: Dict[int, List[ParagraphBlock]] = {}
-
-    print(f"\n[ISLEM BASLADI] Toplam Sayfa: {total_pages} | Belge: {input_pdf}")
-
-    if pages is None:
-        page_list = list(range(total_pages))
-    else:
-        page_list = sorted(set(pages))
-        out_of_range = [n for n in page_list if not (0 <= n < total_pages)]
-        if out_of_range:
-            raise ValueError(f"Sayfa indeksleri 0..{total_pages - 1} araliginda olmali: {out_of_range}")
-        if not page_list:
-            raise ValueError("Bos sayfa secimi")
-        print(f"[SAYFA SECIMI] {len(page_list)}/{total_pages} sayfa islenecek: {[n + 1 for n in page_list][:20]}{'...' if len(page_list) > 20 else ''}")
-
-    checkpoint = ExtractionCheckpoint.create_or_load(
-        input_pdf, allow_ocr=allow_ocr, total_pages=total_pages, resume=resume
-    )
-
-    global_id = 0
-    for page_num in page_list:
-        page = doc[page_num]
-        if checkpoint.has_page(page_num):
-            paras = checkpoint.get_page(page_num)
-        else:
-            paras = layout_engine.extract_paragraphs(page, page_num)
-            checkpoint.add_page(page_num, paras)
-        for p in paras:
-            p.id = global_id
-            global_id += 1
-            all_paragraphs.append(p)
-        pages_blocks_map[page_num] = paras
-
-    total_blocks = len(all_paragraphs)
-    print(f"-> Tespit Edilen Toplam Butunlesik Blok Sayisi: {total_blocks}")
-    reporter.emit("stage", stage=2, label=f"2/4 • Akademik Çeviri ({total_blocks} Blok)...", percent=18.0)
-
-    processed_blocks = 0
-    for page_num in page_list:
-        paras = pages_blocks_map.get(page_num, [])
-        for p in paras:
-            p.translated_text = translator.translate_block(p)
-            processed_blocks += 1
-
-        reporter.emit("progress", done=processed_blocks, total=total_blocks)
-        # Her sayfada önbellek floşu: çökme durumunda en fazla o anki sayfanın
-        # çevirisi kaybolur (eskiden 10 sayfaya kadar kayıp olabilirdi).
-        translator.save_cache()
-        if (page_num + 1) % 10 == 0 or page_num == page_list[-1]:
-            print(
-                f"   Ceviri Ilerlemesi: {processed_blocks}/{total_blocks} blok "
-                f"(Sayfa {page_num + 1}/{total_pages}) tamamlandi."
-            )
-            release_memory(device)
-
-    font_reg_path, font_bold_path, font_validator = select_best_unicode_fonts()
-    if font_reg_path:
-        print(f"-> Aktif Font ve Turkce Glif Kalkani: {os.path.basename(font_reg_path)}")
-    else:
-        print("[UYARI] Turkce glifli sistem fontu bulunamadi; dahili 'helv' fontu kullanilacak.")
-
-    run_cpp_layout_engine(all_paragraphs, font_validator)
-    reporter.emit("stage", stage=3, label="3/4 • Mizanpaj Optimizasyonu...", percent=85.0)
-
-    print("\n3. [CERRAHI RENDER] Gercek Redaction API ve Kod Karantinasi ile PDF isleniyor...")
-    reporter.emit("stage", stage=4, label="4/4 • Cerrahi PDF Render & TXT Üretimi...", percent=92.0)
-    renderer = RedactionPDFRenderer(font_reg_path, font_bold_path, font_validator)
-    renderer.render_document(doc, pages_blocks_map, device)
-
-    final_pdf_path = output_pdf
     try:
-        doc.save(final_pdf_path, garbage=4, deflate=True)
-    except PermissionError:
-        base, ext = os.path.splitext(output_pdf)
-        final_pdf_path = f"{base}_YENI{ext}"
-        print(f"[UYARI] '{output_pdf}' baska bir programda acik! Cikti '{final_pdf_path}' olarak kaydedildi.")
-        doc.save(final_pdf_path, garbage=4, deflate=True)
+        total_pages = len(doc)
+        translator.profile_book_domain(doc)
+
+        all_paragraphs: List[ParagraphBlock] = []
+        pages_blocks_map: Dict[int, List[ParagraphBlock]] = {}
+
+        print(f"\n[ISLEM BASLADI] Toplam Sayfa: {total_pages} | Belge: {input_pdf}")
+
+        if pages is None:
+            page_list = list(range(total_pages))
+        else:
+            page_list = sorted(set(pages))
+            out_of_range = [n for n in page_list if not (0 <= n < total_pages)]
+            if out_of_range:
+                raise ValueError(f"Sayfa indeksleri 0..{total_pages - 1} araliginda olmali: {out_of_range}")
+            if not page_list:
+                raise ValueError("Bos sayfa secimi")
+            print(f"[SAYFA SECIMI] {len(page_list)}/{total_pages} sayfa islenecek: {[n + 1 for n in page_list][:20]}{'...' if len(page_list) > 20 else ''}")
+
+        checkpoint = ExtractionCheckpoint.create_or_load(
+            input_pdf, allow_ocr=allow_ocr, total_pages=total_pages, resume=resume
+        )
+
+        global_id = 0
+        for page_num in page_list:
+            page = doc[page_num]
+            if checkpoint.has_page(page_num):
+                paras = checkpoint.get_page(page_num)
+            else:
+                paras = layout_engine.extract_paragraphs(page, page_num)
+                checkpoint.add_page(page_num, paras)
+            for p in paras:
+                p.id = global_id
+                global_id += 1
+                all_paragraphs.append(p)
+            pages_blocks_map[page_num] = paras
+
+        total_blocks = len(all_paragraphs)
+        print(f"-> Tespit Edilen Toplam Butunlesik Blok Sayisi: {total_blocks}")
+        reporter.emit("stage", stage=2, label=f"2/4 • Akademik Çeviri ({total_blocks} Blok)...", percent=18.0)
+
+        processed_blocks = 0
+        for page_num in page_list:
+            paras = pages_blocks_map.get(page_num, [])
+            for p in paras:
+                p.translated_text = translator.translate_block(p)
+                processed_blocks += 1
+
+            reporter.emit("progress", done=processed_blocks, total=total_blocks)
+            # Her sayfada önbellek floşu: çökme durumunda en fazla o anki sayfanın
+            # çevirisi kaybolur (eskiden 10 sayfaya kadar kayıp olabilirdi).
+            translator.save_cache()
+            if (page_num + 1) % 10 == 0 or page_num == page_list[-1]:
+                print(
+                    f"   Ceviri Ilerlemesi: {processed_blocks}/{total_blocks} blok "
+                    f"(Sayfa {page_num + 1}/{total_pages}) tamamlandi."
+                )
+                release_memory(device)
+
+        font_reg_path, font_bold_path, font_validator = select_best_unicode_fonts()
+        if font_reg_path:
+            print(f"-> Aktif Font ve Turkce Glif Kalkani: {os.path.basename(font_reg_path)}")
+        else:
+            print("[UYARI] Turkce glifli sistem fontu bulunamadi; dahili 'helv' fontu kullanilacak.")
+
+        run_cpp_layout_engine(all_paragraphs, font_validator)
+        reporter.emit("stage", stage=3, label="3/4 • Mizanpaj Optimizasyonu...", percent=85.0)
+
+        print("\n3. [CERRAHI RENDER] Gercek Redaction API ve Kod Karantinasi ile PDF isleniyor...")
+        reporter.emit("stage", stage=4, label="4/4 • Cerrahi PDF Render & TXT Üretimi...", percent=92.0)
+        renderer = RedactionPDFRenderer(font_reg_path, font_bold_path, font_validator)
+        renderer.render_document(doc, pages_blocks_map, device)
+
+        final_pdf_path = output_pdf
+        try:
+            doc.save(final_pdf_path, garbage=4, deflate=True)
+        except PermissionError:
+            base, ext = os.path.splitext(output_pdf)
+            final_pdf_path = f"{base}_YENI{ext}"
+            print(f"[UYARI] '{output_pdf}' baska bir programda acik! Cikti '{final_pdf_path}' olarak kaydedildi.")
+            doc.save(final_pdf_path, garbage=4, deflate=True)
+        finally:
+            doc.close()
     finally:
-        doc.close()
+        # Başarı yolunda doc yukarıdaki finally'de zaten kapanır (PyMuPDF'de
+        # kapatılmış doc'u tekrar kapatmak hata verir); istisna yollarında
+        # kapanış burada garanti edilir.
+        if not doc.is_closed:
+            doc.close()
 
     base_name = os.path.splitext(final_pdf_path)[0]
     clean_txt_file = f"{base_name}.txt"
@@ -299,16 +330,16 @@ def run_pipeline(
     # Kısmi (--pages) koşu, tam-kitap checkpoint'ini silmemeli: bir sonraki tam
     # koşu analiz edilen sayfalardan devam etsin. Yalnız tüm sayfalar işlendiğinde
     # checkpoint temizlenir.
-    covered_whole_document = pages is None or len(page_list) >= total_pages
+    covered_whole_document = is_full_page_selection(page_list, total_pages)
     if covered_whole_document:
         checkpoint.discard()
         print("[CHECKPOINT] Islem tamamlandi; ara checkpoint temizlendi.")
     else:
-        print("[CHECKPOINT] Kismi kosu: checkpoint korundu (tam kosu kaldigi yerden devam eder).")
+        print("[CHECKPOINT] Kismi sayfa secimi: ara checkpoint korundu (tum sayfalar bitene kadar silinmeyecek).")
     reporter.emit("done", output_pdf=final_pdf_path, clean_txt=clean_txt_file, review_txt=review_txt_file)
 
     print("\n====================================================================")
-    print("[BASARILI] Moduler Evrensel Motor (v18.1) Ciktilari Uretildi:")
+    print(f"[BASARILI] Moduler Evrensel Motor (v{ENGINE_VERSION}) Ciktilari Uretildi:")
     print(f"  1. Kusursuz PDF Dosyasi        : {final_pdf_path}")
     print(f"  2. Temiz Turkce TXT Dosyasi    : {clean_txt_file}")
     print(f"  3. Karsilastirmali Inceleme TXT: {review_txt_file}")
@@ -407,13 +438,19 @@ def main(argv: List[str] = None) -> int:
         run_analysis(args.input_pdf, allow_ocr=not args.no_ocr, pages=pages)
         return 0
 
-    run_pipeline(
-        args.input_pdf,
-        output,
-        allow_ocr=not args.no_ocr,
-        resume=not args.fresh,
-        pages=pages,
-    )
+    try:
+        run_pipeline(
+            args.input_pdf,
+            output,
+            allow_ocr=not args.no_ocr,
+            resume=not args.fresh,
+            pages=pages,
+        )
+    except RuntimeError as exc:
+        # Bozuk/şifreli PDF gibi boru hattı hataları CLI'da traceback yerine
+        # tek satır temiz mesaja iner (GUI zaten Exception'ı kendisi yakalar).
+        print(f"[HATA] {exc}")
+        return 1
     return 0
 
 
