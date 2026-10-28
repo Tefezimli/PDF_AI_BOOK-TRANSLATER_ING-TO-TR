@@ -110,6 +110,11 @@ class UniversalTranslationEngine:
             llm_out = self.lmstudio.translate_masked_text(m_txt)
             if llm_out:
                 restored = FormalismAnalyzer.unmask_formal_tokens(llm_out, m_dict)
+                # Adli denetim: LLM maskeleri sildiyse geri ekle, ciddi eksik
+                # çeviride orijinale dön (önceden ölü koddu; artık devrede).
+                # Import bilinçli olarak burada: renderers→translators döngüsünü kırmak için.
+                from renderers.forensic_auditor import PageForensicAuditor
+                restored = PageForensicAuditor.audit_and_repair_translation(body, restored, m_dict)
                 restored = self.registry.apply_post_fixes(restored)
                 restored = DeterministicArtifactPurger.sanitize_stream(restored)
                 result = ("\u2022 " if has_bullet else "") + restored

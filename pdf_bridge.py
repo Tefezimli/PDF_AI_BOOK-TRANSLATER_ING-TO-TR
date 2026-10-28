@@ -5,10 +5,10 @@ import warnings
 from typing import List, Dict
 
 # pyproject.toml'daki version alanıyla senkron tutulmalı (sürümlerde).
-__version__ = "18.1.0"
+__version__ = "18.1.1"
 
 # Motor sürüm etiketi: CLI çıktı mesajlarında kullanılır (pyproject ile uyumlu).
-ENGINE_VERSION = "18.1.0"
+ENGINE_VERSION = "18.1.1"
 
 os.environ["HF_HUB_DISABLE_TELEMETRY"] = "1"
 os.environ["HF_HUB_DISABLE_IMPLICIT_TOKEN"] = "1"

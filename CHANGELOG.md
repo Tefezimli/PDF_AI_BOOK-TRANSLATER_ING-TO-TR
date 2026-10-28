@@ -3,6 +3,24 @@
 Bu dosyadaki önemli değişiklikler kayıt altına alınır.
 Format [Keep a Changelog](https://keepachangelog.com/tr/1.1.0/) esnekliğinde, sürümleme [SemVer](https://semver.org/) mantığındadır.
 
+## [18.1.1] — 2026-10-28
+
+### Düzeltildi (2026-10-28 kod incelemesinin bulguları)
+- `--pages 1-1000000000` gibi girdiler RAM'i kilitlemiyordu → aralıklar toplam sayfaya clamp'lenir.
+- Kısmi `--pages` koşusu tüm-kitap checkpoint'ini siliyordu → artık yalnız tüm sayfalar işlendiğinde silinir.
+- Önbellek yazımı atomik (tmp + os.replace): çökme anında yarım JSON önbelleği sıfırlamıyor.
+- Şifreli/bozuk PDF girdileri `PDFInputError` ile net tek satır hata verir; `run_pipeline` dokümanı her durumda kapatır (fd sızıntısı yok).
+- LM Studio: `finish_reason=length` yanıtları reddedilir (kesik çeviri asla kabul/önbelleklenmez); `max_tokens` girdi uzunluğuna göre ölçeklenir.
+- Önbellek anahtarları motor etiketlidir (`llm|`/`opus|`): Opus-MT yedek çevirileri gelecekteki LLM koşularını gölgemez.
+- **Adli denetim devrede:** LLM bir `⟦CODE_X⟧` maskesini silerse çeviriye otomatik geri eklenir; ciddi eksik çeviride orijinal metne dönülür (önceden ölü koddu).
+- Geçersiz `PDF_AI_FONT_BOLD` düzgün biçimde regular fonta düşer; cv2 eksikse OCR tek uyarıyla atlanır (çökme yok).
+- TOC sayfa numarası deseni katı roma rakamı kullanır ("civil"/"mild" sayfa no sanılmaz).
+- E-posta adresleri `@` onarım kurallarından etkilenmez.
+- SECURITY.md ağ iddiaları düzeltildi (ilk kurulumda HF indirmesi; uzak LM Studio URL uyarısı).
+
+### Değişti
+- Paket bağımlılığı `opencv-python` → `opencv-python-headless` (CLI/headless kullanım için yeterli, Qt çekmez).
+
 ## [18.1.0] — 2026-10-28
 
 ### Eklendi

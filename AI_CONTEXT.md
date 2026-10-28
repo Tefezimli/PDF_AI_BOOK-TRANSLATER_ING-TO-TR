@@ -3,6 +3,9 @@
 Bu depo, akademik ve teknik PDF kitaplarını (Siber Güvenlik, Sayısal Tasarım, Programlama Dilleri vb.) %100 çevrimdışı (air-gapped) ve mizanpajı bozmadan Türkçeye çeviren modüler bir sistemdir. Sürüm: v18.1 (CHANGELOG.md'ye bakınız).
 
 ## Yeni AI Oturumları İçin Doğrulama Reçeteleri (bu depoda çalışırken)
+
+> ⚠️ **Eşzamanlılık kuralı:** Aynı working tree'de aynı anda yalnız TEK AI oturumu çalışsın (2026-10-28'de iki oturum üst üste bindi; zararsız bitti ama garanti değildir). Paralel çalışma gerekirse `git worktree add ../pdfai-diger main` ile ayrı klasör açın. Her değişiklikten hemen sonra `pytest + ruff + commit` yapın; commit'lenmemiş iş bırakmayın.
+
 Bu makinede torch/transformers/opencv KURULU DEĞİLDİR (GUI/LLM koşusu yapılamaz); saf mantık tam test edilir:
 ```bash
 # 1) Test venv'i (yoksa): python3 -m venv /tmp/pdfai_testenv
