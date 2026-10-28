@@ -1,5 +1,6 @@
 import argparse
 import os
+import re
 import warnings
 from typing import List, Dict
 
@@ -56,6 +57,34 @@ class ProgressReporter:
             pass
 
 
+def parse_page_selection(spec: str, total_pages: int) -> List[int]:
+    """'1-10', '3', '1,2,5-8' biçimindeki 1 tabanlı seçimi sıralı 0 tabanlı
+    sayfa indekslerine çevirir. Aralık dışı sayılar uyarıyla düşürülür."""
+    selected = set()
+    for part in spec.split(","):
+        part = part.strip()
+        if not part:
+            continue
+        m = re.fullmatch(r"(\d+)\s*-\s*(\d+)", part)
+        if m:
+            a, b = int(m.group(1)), int(m.group(2))
+            if a > b:
+                raise ValueError(f"Gecersiz sayfa araligi: {part} (baslangic > bitis)")
+            selected.update(range(a - 1, b))
+        elif part.isdigit():
+            selected.add(int(part) - 1)
+        else:
+            raise ValueError(f"Gecersiz sayfa ifadesi: {part!r}")
+
+    valid = sorted(n for n in selected if 0 <= n < total_pages)
+    dropped = len(selected) - len(valid)
+    if dropped:
+        print(f"[UYARI] {dropped} sayfa aralik disinda oldugu icin secimden dusturuldu (toplam: {total_pages}).")
+    if not valid:
+        raise ValueError(f"Sayfa secimi bos: {spec!r}")
+    return valid
+
+
 def run_pipeline(
     input_pdf: str,
     output_pdf: str,
@@ -63,6 +92,7 @@ def run_pipeline(
     allow_ocr: bool = True,
     progress_cb=None,
     resume: bool = True,
+    pages: List[int] = None,
 ) -> None:
     reporter = ProgressReporter(progress_cb)
     device, dtype = get_safe_device()
@@ -79,12 +109,23 @@ def run_pipeline(
 
     print(f"\n[ISLEM BASLADI] Toplam Sayfa: {total_pages} | Belge: {input_pdf}")
 
+    if pages is None:
+        page_list = list(range(total_pages))
+    else:
+        page_list = sorted(set(pages))
+        out_of_range = [n for n in page_list if not (0 <= n < total_pages)]
+        if out_of_range:
+            raise ValueError(f"Sayfa indeksleri 0..{total_pages - 1} araliginda olmali: {out_of_range}")
+        if not page_list:
+            raise ValueError("Bos sayfa secimi")
+        print(f"[SAYFA SECIMI] {len(page_list)}/{total_pages} sayfa islenecek: {[n + 1 for n in page_list][:20]}{'...' if len(page_list) > 20 else ''}")
+
     checkpoint = ExtractionCheckpoint.create_or_load(
         input_pdf, allow_ocr=allow_ocr, total_pages=total_pages, resume=resume
     )
 
     global_id = 0
-    for page_num in range(total_pages):
+    for page_num in page_list:
         page = doc[page_num]
         if checkpoint.has_page(page_num):
             paras = checkpoint.get_page(page_num)
@@ -102,7 +143,7 @@ def run_pipeline(
     reporter.emit("stage", stage=2, label=f"2/4 • Akademik Çeviri ({total_blocks} Blok)...", percent=18.0)
 
     processed_blocks = 0
-    for page_num in range(total_pages):
+    for page_num in page_list:
         paras = pages_blocks_map.get(page_num, [])
         for p in paras:
             p.translated_text = translator.translate_block(p)
@@ -112,7 +153,7 @@ def run_pipeline(
         # Her sayfada önbellek floşu: çökme durumunda en fazla o anki sayfanın
         # çevirisi kaybolur (eskiden 10 sayfaya kadar kayıp olabilirdi).
         translator.save_cache()
-        if (page_num + 1) % 10 == 0 or (page_num + 1) == total_pages:
+        if (page_num + 1) % 10 == 0 or page_num == page_list[-1]:
             print(
                 f"   Ceviri Ilerlemesi: {processed_blocks}/{total_blocks} blok "
                 f"(Sayfa {page_num + 1}/{total_pages}) tamamlandi."
@@ -165,10 +206,18 @@ def build_arg_parser() -> argparse.ArgumentParser:
         prog="pdf_bridge",
         description="PDF AI Engine Pro — İngilizce akademik PDF'yi Türkçeye çevirir (tamamen çevrimdışı)."
     )
-    parser.add_argument("input_pdf", help="Çevrilecek İngilizce PDF dosyası")
+    parser.add_argument(
+        "input_pdf", nargs="?",
+        help="Çevrilecek İngilizce PDF dosyası (--doctor/--eval dışında zorunlu)"
+    )
     parser.add_argument(
         "-o", "--output-pdf",
         help="Hedef Türkçe PDF (verilmezse '<girdi>_ULTIMATE.pdf' kullanılır)"
+    )
+    parser.add_argument(
+        "--pages",
+        help="Yalnızca bu sayfalar çevrilir (1 tabanlı): örn. 1-10 veya 1,2,5-8. "
+             "Duman testi ve büyük kitaplarda kısmi deneme için."
     )
     parser.add_argument(
         "--no-ocr",
@@ -180,22 +229,66 @@ def build_arg_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Var olan mizanpaj checkpoint'ini yok say ve analizleri sıfırdan yap"
     )
+    parser.add_argument(
+        "--doctor",
+        action="store_true",
+        help="Ortam tanılama raporu çalıştır (bağımlılıklar, font, LM Studio, önbellek)"
+    )
+    parser.add_argument(
+        "--eval",
+        action="store_true",
+        help="Çeviri kalitesi değerlendirme setini koştur (LM Studio açıksa canlı LLM de sınanır)"
+    )
     return parser
 
 
 def main(argv: List[str] = None) -> int:
     args = build_arg_parser().parse_args(argv)
 
+    if args.doctor:
+        from core.diagnostics import run_doctor
+        return run_doctor()
+
+    if args.eval:
+        from translators.eval_harness import run_eval
+        live = True  # LM Studio kapalıysa harness otomatik offline'a duser
+        passed, total = run_eval(live=live)
+        return 0 if passed == total else 1
+
+    if not args.input_pdf:
+        print("[HATA] Girdi PDF verilmedi (--doctor veya --eval kullanmiyorsaniz zorunlu).")
+        return 1
+
     if not os.path.exists(args.input_pdf):
         print(f"[HATA] Girdi PDF bulunamadi: {args.input_pdf}")
         return 1
 
-    output = args.output_pdf or f"{os.path.splitext(args.input_pdf)[0]}_ULTIMATE.pdf"
+    output = args.output_pdf
+    if output is None:
+        base = os.path.splitext(args.input_pdf)[0]
+        if args.pages:
+            suffix = "_p" + args.pages.replace(" ", "")
+            output = f"{base}{suffix}_ULTIMATE.pdf"
+        else:
+            output = f"{base}_ULTIMATE.pdf"
+
+    pages = None
+    if args.pages:
+        import pymupdf as fitz_probe  # toplam sayfa sayısı seçim doğrulaması için
+        with fitz_probe.open(args.input_pdf) as probe_doc:
+            total_pages = len(probe_doc)
+        try:
+            pages = parse_page_selection(args.pages, total_pages)
+        except ValueError as exc:
+            print(f"[HATA] Gecersiz --pages ifadesi: {exc}")
+            return 1
+
     run_pipeline(
         args.input_pdf,
         output,
         allow_ocr=not args.no_ocr,
         resume=not args.fresh,
+        pages=pages,
     )
     return 0
 

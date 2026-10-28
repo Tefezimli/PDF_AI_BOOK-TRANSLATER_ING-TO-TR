@@ -1,9 +1,27 @@
+from __future__ import annotations
+
 import os
 import gc
 import shutil
 from typing import Tuple
-import torch
+
+try:
+    import torch
+except ImportError:
+    # Hafif kurulum ([ai] extra'sı yok): --doctor / --help çalışabilsin.
+    # Çeviri boru hattı bu durumda açık hatayla durur (aşağıya bakınız).
+    torch = None
+
 import pytesseract
+
+
+def _require_torch():
+    if torch is None:
+        raise RuntimeError(
+            "PyTorch kurulu degil. Kurulum: pip install -e .[ai] "
+            "(CUDA icin Kurulum_Yap.bat veya PyTorch indeksi)"
+        )
+    return torch
 
 
 def configure_tesseract() -> bool:
@@ -27,6 +45,7 @@ HAS_TESSERACT = configure_tesseract()
 
 
 def get_safe_device() -> Tuple[torch.device, torch.dtype]:
+    torch = _require_torch()
     if torch.cuda.is_available():
         try:
             cap = torch.cuda.get_device_capability(0)
@@ -61,7 +80,7 @@ def get_safe_device() -> Tuple[torch.device, torch.dtype]:
 def release_memory(device: torch.device) -> None:
     if device.type == "cuda":
         try:
-            torch.cuda.empty_cache()
+            _require_torch().cuda.empty_cache()
         except Exception:
             pass
     gc.collect()

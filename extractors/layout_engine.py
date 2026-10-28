@@ -1,10 +1,18 @@
+from __future__ import annotations
+
 import re
 from typing import List, Tuple, Dict, Any, Optional
 import pymupdf as fitz
 from PIL import Image
-import cv2
 import numpy as np
 import pytesseract
+
+try:
+    import cv2
+except ImportError:
+    # Hafif kurulumda (opencv yok): dijital akış çalışır, OCR gerektiğinde
+    # _extract_scanned_ocr içindeki açık kontrol devreye girer.
+    cv2 = None
 
 from core.models import BoundingBox, ParagraphBlock
 from core.hardware import HAS_TESSERACT
@@ -403,6 +411,8 @@ class GeometricLayoutEngine:
         quarantined_blocks: List[ParagraphBlock],
         scale: float = 2.5
     ) -> List[ParagraphBlock]:
+        if cv2 is None:
+            raise RuntimeError("OpenCV kurulu degil; taranmis sayfa OCR'i icin 'pip install opencv-python' gerekiyor.")
         pix = page.get_pixmap(matrix=fitz.Matrix(scale, scale))
         img_array = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.h, pix.w, pix.n)
         if pix.n == 4:

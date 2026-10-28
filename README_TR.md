@@ -146,6 +146,15 @@ Terminalden tek komutla da mümkün:
 ```bash
 python pdf_bridge.py akademik_kitap.pdf -o akademik_kitap_TR.pdf [--no-ocr] [--fresh]
 
+# Kısmi deneme (büyük kitapta duman testi): yalnız ilk 10 sayfa
+python pdf_bridge.py akademik_kitap.pdf --pages 1-10
+
+# Ortam tanılama raporu (bağımlılıklar, font, LM Studio, önbellek)
+pdfai-translate --doctor
+
+# Çeviri kalitesi değerlendirme seti (LM Studio açıksa canlı LLM de sınanır)
+pdfai-translate --eval
+
 # Paket olarak kurulum (pdfai-translate komutunu verir):
 pip install -e .          # hafif kurulum (torch/transformers hariç)
 pip install -e .[ai]      # CPU torch + transformers dahil (CUDA için Kurulum_Yap.bat'ı kullanın)

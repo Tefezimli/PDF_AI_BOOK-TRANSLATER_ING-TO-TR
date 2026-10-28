@@ -147,6 +147,15 @@ Or straight from the terminal — or install as a package:
 ```bash
 python pdf_bridge.py academic_textbook.pdf -o academic_textbook_TR.pdf [--no-ocr] [--fresh]
 
+# Partial smoke test on a big book: only the first 10 pages
+python pdf_bridge.py academic_textbook.pdf --pages 1-10
+
+# Environment diagnostics (deps, fonts, LM Studio, cache)
+pdfai-translate --doctor
+
+# Translation quality evaluation set (also exercises the live LLM if LM Studio is up)
+pdfai-translate --eval
+
 # Package install (provides the pdfai-translate command):
 pip install -e .          # light install (without torch/transformers)
 pip install -e .[ai]      # includes CPU torch + transformers (for CUDA use Kurulum_Yap.bat)

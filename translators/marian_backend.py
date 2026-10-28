@@ -1,8 +1,15 @@
+from __future__ import annotations
+
 import os
 import re
 from typing import List, Dict
-import torch
 import pymupdf as fitz
+
+try:
+    import torch
+except ImportError:
+    # Hafif kurulum ([ai] extra'sı yok): --doctor / --eval (offline) çalışsın.
+    torch = None
 
 from core.models import ParagraphBlock
 from core.unicode_sanitizer import normalize_unicode_text, DeterministicArtifactPurger
