@@ -29,7 +29,7 @@ dependencies = [
 [project.optional-dependencies]
 ai = [
     "torch>=2.2.0,<3",
-    "transformers>=4.40.0,<5",
+    "transformers>=4.40.0,<6",
     "sentencepiece>=0.2.0,<1",
 ]
 test = [
